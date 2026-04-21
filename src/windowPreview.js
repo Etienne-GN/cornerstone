@@ -700,6 +700,7 @@ export const PreviewMenu = GObject.registerClass(
     }
 
     _peek(window) {
+      let label = 'peekedWindowWorkspaceChanged'
       let currentWorkspace = Utils.getCurrentWorkspace()
       let isAppSpread = !Main.sessionMode.hasWorkspaces
       let windowWorkspace = isAppSpread
@@ -718,6 +719,15 @@ export const PreviewMenu = GObject.registerClass(
 
       this._peekedWindow = window
 
+      this._signalsHandler.addWithLabel(label, [
+        this._peekedWindow,
+        'workspace-changed',
+        () => {
+          this._signalsHandler.removeWithLabel(label)
+          this._endPeek(true, true)
+        },
+      ])
+
       if (currentWorkspace != windowWorkspace) {
         this._switchToWorkspaceImmediate(windowWorkspace.index())
         this._timeoutsHandler.add([T3, 100, focusWindow])
@@ -730,16 +740,17 @@ export const PreviewMenu = GObject.registerClass(
       }
     }
 
-    _endPeek(stayHere) {
+    _endPeek(stayHere, ignoreWindow) {
       this._timeoutsHandler.remove(T3)
 
       if (this._peekedWindow) {
+        let window = ignoreWindow ? null : this._peekedWindow
         let immediate =
           !stayHere &&
           this.peekInitialWorkspaceIndex != Utils.getCurrentWorkspace().index()
 
         this._restorePeekedWindowStack()
-        this._focusMetaWindow(255, this._peekedWindow, immediate, true)
+        this._focusMetaWindow(255, window, immediate, true)
         this._peekedWindow = null
 
         if (!stayHere) {
@@ -769,12 +780,11 @@ export const PreviewMenu = GObject.registerClass(
 
     _focusMetaWindow(dimOpacity, window, immediate, ignoreFocus) {
       let isAppSpread = !Main.sessionMode.hasWorkspaces
-      let windowWorkspace = isAppSpread
-        ? Utils.getCurrentWorkspace()
-        : window.get_workspace()
       let windows = isAppSpread
         ? Utils.getAllMetaWindows()
-        : windowWorkspace.list_windows()
+        : (
+            window?.get_workspace() || Utils.getCurrentWorkspace()
+          ).list_windows()
 
       windows.forEach((mw) => {
         let wa = mw.get_compositor_private()
