@@ -46,6 +46,7 @@ const FOCUSED_COLOR_OFFSET = 24
 const HEADER_COLOR_OFFSET = -12
 const FADE_SIZE = 36
 const PEEK_INDEX_PROP = '_dtpPeekInitialIndex'
+const WINDOW_WS_CHANGED = 'peekedWindowWorkspaceChanged'
 
 let headerHeight = 0
 let alphaBg = 0
@@ -700,7 +701,6 @@ export const PreviewMenu = GObject.registerClass(
     }
 
     _peek(window) {
-      let label = 'peekedWindowWorkspaceChanged'
       let currentWorkspace = Utils.getCurrentWorkspace()
       let isAppSpread = !Main.sessionMode.hasWorkspaces
       let windowWorkspace = isAppSpread
@@ -719,13 +719,10 @@ export const PreviewMenu = GObject.registerClass(
 
       this._peekedWindow = window
 
-      this._signalsHandler.addWithLabel(label, [
+      this._signalsHandler.addWithLabel(WINDOW_WS_CHANGED, [
         this._peekedWindow,
         'workspace-changed',
-        () => {
-          this._signalsHandler.removeWithLabel(label)
-          this._endPeek(true, true)
-        },
+        () => this._endPeek(true, true),
       ])
 
       if (currentWorkspace != windowWorkspace) {
@@ -749,6 +746,7 @@ export const PreviewMenu = GObject.registerClass(
           !stayHere &&
           this.peekInitialWorkspaceIndex != Utils.getCurrentWorkspace().index()
 
+        this._signalsHandler.removeWithLabel(WINDOW_WS_CHANGED)
         this._restorePeekedWindowStack()
         this._focusMetaWindow(255, window, immediate, true)
         this._peekedWindow = null
