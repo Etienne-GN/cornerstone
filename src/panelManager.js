@@ -376,6 +376,8 @@ export const PanelManager = class {
       )
     }
 
+    if (Main.panel._clickGesture) Main.panel._clickGesture.set_enabled(true)
+
     if (reset) return
 
     this._injectionManager.clear()
@@ -404,8 +406,6 @@ export const PanelManager = class {
       this._oldUpdateWorkspacesViews
     Main.overview._overview._controls._workspacesDisplay.setPrimaryWorkspaceVisible =
       this._oldSetPrimaryWorkspaceVisible
-
-    if (Main.panel._clickGesture) Main.panel._clickGesture.set_enabled(true)
 
     LookingGlass.LookingGlass.prototype._resize =
       LookingGlass.LookingGlass.prototype._oldResize
