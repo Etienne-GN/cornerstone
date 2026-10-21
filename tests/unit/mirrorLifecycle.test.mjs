@@ -811,3 +811,28 @@ test('workspace: a reopen within the restore delay keeps the real source', () =>
     delete fakes.Main.panel.statusArea['omni-workspace']
   }
 })
+
+test('a C-side destroy runs cleanup once', () => {
+  for (const jsDestroy of [false, true]) {
+    const box = new BoxLayout()
+    box.add_child(new Label({ text: 'x' }))
+    const source = makeSource('omni-cside', box)
+    const before = source.handlers.size
+    const mirror = new MirroredIndicatorButton(
+      { vertical: false },
+      'omni-cside',
+    )
+    let runs = 0
+    const cleanup = mirror._cleanup
+    mirror._cleanup = function () {
+      runs++
+      return cleanup.call(this)
+    }
+    if (jsDestroy) mirror.destroy()
+    else mirror.emit('destroy')
+    assert.equal(runs, 1, `jsDestroy=${jsDestroy}: cleanup runs once`)
+    assert.equal(source.handlers.size, before, 'source handlers released')
+    assert.equal(box.handlers.size, 0, 'source child handlers released')
+    delete fakes.Main.panel.statusArea['omni-cside']
+  }
+})

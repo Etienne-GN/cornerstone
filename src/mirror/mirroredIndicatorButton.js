@@ -163,6 +163,8 @@ export const MirroredIndicatorButton = GObject.registerClass(
       // swallow clicks before _onButtonPress can forward them to the
       // source indicator's real menu. We never use the default menu.
       super._init(0.0, null, true)
+      // A parent destroyed from C never calls the JS destroy() override.
+      this.connect('destroy', () => this._cleanupOnce())
 
       this._omniMirror = true
       this._role = role
@@ -3357,11 +3359,19 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
     // GNOME disables extensions on every screen lock: a failed cleanup must
     // not keep the actor alive or abort the caller's teardown.
-    destroy() {
+    _cleanupOnce() {
+      if (this._cleanedUp) return
+      this._cleanedUp = true
       try {
         this._cleanup()
       } catch (e) {
         console.error('[omnibar] mirror cleanup', e)
+      }
+    }
+
+    destroy() {
+      try {
+        this._cleanupOnce()
       } finally {
         super.destroy()
       }
