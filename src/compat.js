@@ -48,3 +48,8 @@ export function setBoxVertical(box, vertical) {
       : Clutter.Orientation.HORIZONTAL
   else box.vertical = vertical
 }
+
+// St.BoxLayout gained `orientation` in 48; both supported shells have it.
+export function verticalBoxProps() {
+  return { orientation: Clutter.Orientation.VERTICAL }
+}

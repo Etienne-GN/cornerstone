@@ -70,3 +70,8 @@ test('setBoxVertical uses orientation when present, else vertical', () => {
   setBoxVertical(legacy, true)
   assert.equal(legacy.vertical, true)
 })
+
+test('verticalBoxProps uses orientation', () => {
+  const { verticalBoxProps } = load('51.1')
+  assert.deepEqual(plain(verticalBoxProps()), { orientation: 'v' })
+})
