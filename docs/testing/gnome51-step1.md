@@ -11,6 +11,7 @@ Omnibar.
 Note the start time, so the journal check ignores earlier boots' noise:
 
 ```
+mkdir -p ~/git/omnibar/.nested
 date '+%F %T' | tee ~/git/omnibar/.nested/omnibar-start.txt
 ```
 
@@ -54,7 +55,7 @@ Open page "Multi-monitor & Action Center":
 In Omnibar settings, page "Position", group "Order and Position on
 monitors": untick "Apply changes to all monitors", pick the secondary monitor
 in the monitor drop-down, then under "Panel monitor position" choose Left or
-Right (per-monitor, checked in `ui/SettingsPosition.ui` and `src/prefs.js`). Check that mirrors render correctly (orientation, size, spacing, no
+Right. Check that mirrors render correctly (orientation, size, spacing, no
 clipping), menus still open on that monitor, and toggling still works. Put
 the position back afterwards.
 

@@ -42,10 +42,9 @@ dconf reset -f /org/gnome/shell/extensions/omnibar/
 dconf load /org/gnome/shell/extensions/omnibar/ < ~/omnibar-backup.ini
 ```
 
-The reset
-alone returns Omnibar to schema defaults; the `load` restores the backup. The
-Dash to Panel settings under `/org/gnome/shell/extensions/dash-to-panel/` are
-only read, never modified.
+The reset alone returns Omnibar to schema defaults; the `load` restores the
+backup. The Dash to Panel settings under
+`/org/gnome/shell/extensions/dash-to-panel/` are only read, never modified.
 
 Disable the old extensions, then log out and back in:
 
@@ -83,19 +82,28 @@ If the shell does not come up cleanly, switch to a TTY and run the same
 three `gnome-extensions` commands. From a bare TTY they may fail, because
 `gnome-extensions` needs the session D-Bus.
 
-Last resort, pure settings edit (also needs the user's dconf, so it may fail
-the same way; otherwise run it from a working terminal). Inspect first:
+Last resort, pure settings edit (it needs the user's dconf, so it may fail
+the same way from a bare TTY; otherwise run it from a working terminal).
+Do not type the extension list by hand: it holds every enabled extension and
+a hand-typed list silently drops the others.
+
+Back up and inspect the current list:
 
 ```
-gsettings get org.gnome.shell enabled-extensions
+gsettings get org.gnome.shell enabled-extensions > ~/enabled-extensions-backup.txt
+cat ~/enabled-extensions-backup.txt
 ```
 
-Then set the list again with only the Omnibar uuid removed, keeping every
-other entry exactly as printed, for example:
+Remove only the Omnibar uuid from the current list:
 
 ```
-gsettings set org.gnome.shell enabled-extensions "['dash-to-panel@jderose9.github.com', 'multi-monitors-bar@frederykabryan']"
+gsettings set org.gnome.shell enabled-extensions "$(gsettings get org.gnome.shell enabled-extensions | sed -e "s/'omnibar@etienne-gn.github.io', *//" -e "s/, *'omnibar@etienne-gn.github.io'//" -e "s/'omnibar@etienne-gn.github.io'//")"
 ```
 
-Replace the example list with the printed one minus
-`omnibar@etienne-gn.github.io`.
+Check the result with `gsettings get org.gnome.shell enabled-extensions`.
+Then, after logging in, re-enable the old extensions in a normal session:
+
+```
+gnome-extensions enable dash-to-panel@jderose9.github.com
+gnome-extensions enable multi-monitors-bar@frederykabryan
+```
