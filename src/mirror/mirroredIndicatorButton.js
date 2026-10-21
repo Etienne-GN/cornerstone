@@ -1411,10 +1411,10 @@ export const MirroredIndicatorButton = GObject.registerClass(
       }
 
       // Parent first: sizing asks the container (and the copied icon) for
-      // their preferred size, which needs a theme node. Off-stage actors
-      // have none, so doing it the other way round both logs
-      // "st_widget_get_theme_node called on [...] which is not in the stage"
-      // and measures without the theme's padding.
+      // their preferred size, which needs a theme node inherited through
+      // the panel. Off-stage, St logs "st_widget_get_theme_node called on
+      // [...] which is not in the stage" and measures without the theme's
+      // padding, so the sync waits until the mirror is mapped.
       parent.add_child(container)
       this._syncStaticCopyContainerSize(container, source)
       this._bindIconSyncSource(container, source)
@@ -1701,7 +1701,13 @@ export const MirroredIndicatorButton = GObject.registerClass(
     }
 
     _syncStaticCopyContainerSize(container, source) {
+      const measureCopy =
+        this._isClipboardIndicator() || source instanceof St.Icon
       const syncSize = () => {
+        // The mirror is built before it is placed in a panel; natural sizes
+        // need theme nodes, which off-stage actors do not have.
+        if (measureCopy && !container.get_stage()) return
+
         if (this._isClipboardIndicator()) {
           const [minWidth, natWidth] = container.get_preferred_width(-1)
           const [, natHeight] = container.get_preferred_height(-1)
@@ -1732,6 +1738,12 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
       syncSize()
 
+      if (measureCopy)
+        container.connectObject(
+          'notify::mapped',
+          () => container.mapped && syncSize(),
+          this,
+        )
       this._trackSourceAllocation(source, syncSize)
     }
 

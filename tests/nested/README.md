@@ -35,3 +35,7 @@ is only read.
 Cycles ArcMenu and Omnibar, then ends with both enabled so the shell's own
 shutdown runs under live mirrors. Headless runs check the whole log,
 shutdown included, and fail when the shell never reached shutdown.
+
+`static-copy --monitors 2 --with-extension clipboard-history@alexsaveau.dev`
+fails on any off-stage theme-node lookup while the clipboard indicator is
+mirrored.
