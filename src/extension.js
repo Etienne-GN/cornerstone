@@ -142,9 +142,11 @@ export default class DashToPanelExtension extends Extension {
 
     this.enableGlobalStyles()
 
-    this._mirrorController = new MirrorController(SETTINGS)
+    this._mirrorController = new MirrorController(SETTINGS, (actor) =>
+      this._openActionCenter(actor),
+    )
 
-    this._actionCenter = new ActionCenter()
+    this._actionCenter = new ActionCenter(SETTINGS)
     if (SETTINGS.get_boolean('action-center')) this._actionCenter.enable()
 
     let completeEnable = () => {
@@ -179,6 +181,14 @@ export default class DashToPanelExtension extends Extension {
 
   get actionCenter() {
     return this._actionCenter ?? null
+  }
+
+  // False leaves the click to the stock menu.
+  _openActionCenter(actor) {
+    if (!this._actionCenter?.isEnabled) return false
+
+    this._actionCenter.toggle(actor)
+    return true
   }
 
   disable() {

@@ -30,6 +30,7 @@ import { POPUP_ANIMATION_TIME } from 'resource:///org/gnome/shell/ui/quickSettin
 import { InjectionManager } from 'resource:///org/gnome/shell/extensions/extension.js'
 
 import { menuClose, menuOpen, verticalBoxProps } from '../compat.js'
+import { ActionCenterRouter } from './router.js'
 import { WidgetMover } from './widgetMover.js'
 
 // quickSettings.js keeps this private.
@@ -118,9 +119,15 @@ class ActionCenterMenu extends PopupMenu.PopupMenu {
 }
 
 export class ActionCenter {
-  constructor() {
+  constructor(settings) {
+    this._settings = settings
     this._menu = null
     this._source = null
+    this._router = null
+  }
+
+  get isEnabled() {
+    return !!this._menu
   }
 
   get isOpen() {
@@ -193,6 +200,13 @@ export class ActionCenter {
     )
 
     this._captureMessageList()
+
+    this._router = new ActionCenterRouter(
+      this,
+      () => global.dashToPanel?.panels ?? [],
+      this._settings,
+    )
+    this._router.enable()
   }
 
   disable() {
@@ -202,6 +216,8 @@ export class ActionCenter {
     const qsMenu = this._qsMenu
     const dateMenu = this._dateMenu
 
+    this._step('router', () => this._router?.disable())
+    this._router = null
     this._step('closing', () => {
       if (menu.isOpen) menuClose(menu, { animate: false })
     })

@@ -319,6 +319,8 @@ export const PanelManager = class {
 
   disable(reset) {
     DTP_EXTENSION.mirrorController?.detach()
+    // Its source may be a button of a panel about to go away.
+    DTP_EXTENSION.actionCenter?.close({ animate: false })
     this.primaryPanel && this.overview.disable()
     this.proximityManager.destroy()
 

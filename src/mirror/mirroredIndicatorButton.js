@@ -1964,10 +1964,11 @@ export const MirroredIndicatorButton = GObject.registerClass(
         return this._openClipboardIndicatorMenu()
       }
 
-      if (this._role === 'quickSettings' && this._host?.openActionCenter) {
-        this._host.openActionCenter(this)
+      if (
+        this._role === 'quickSettings' &&
+        this._host?.openActionCenter?.(this)
+      )
         return Clutter.EVENT_STOP
-      }
 
       if (this._role === 'quickSettings' && this._sourceIndicator?.menu) {
         return this._openQuickSettingsMenu()

@@ -41,6 +41,10 @@
     <value value='1' nick='TEMPORARILY'/>
     <value value='2' nick='ALWAYS'/>
   </enum>
+  <enum id='org.gnome.shell.extensions.omnibar.actionCenterBannerClick'>
+    <value value='0' nick='open-action-center'/>
+    <value value='1' nick='activate'/>
+  </enum>
   <enum id='org.gnome.shell.extensions.omnibar.position'>
     <value value='0' nick='BOTTOM'/>
     <value value='1' nick='TOP'/>
@@ -1426,6 +1430,11 @@
       <default>true</default>
       <summary>Action Center</summary>
       <description>Show quick settings, notifications and the calendar in one popup.</description>
+    </key>
+    <key name="action-center-banner-click" enum="org.gnome.shell.extensions.omnibar.actionCenterBannerClick">
+      <default>'open-action-center'</default>
+      <summary>Notification banner click</summary>
+      <description>What clicking a notification banner does while the Action Center is on: open the Action Center, or activate the notification as GNOME does.</description>
     </key>
   </schema>
 </schemalist>

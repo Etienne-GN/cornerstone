@@ -442,6 +442,15 @@ test('quickSettings click goes to host.openActionCenter when provided', () => {
   })
   plain._onButtonPress(null)
   assert.equal(stock, 1)
+
+  const declined = bare({
+    _role: 'quickSettings',
+    _sourceIndicator: { menu: {} },
+    _host: { openActionCenter: () => false },
+    _openQuickSettingsMenu: () => ++stock,
+  })
+  declined._onButtonPress(null)
+  assert.equal(stock, 2, 'a disabled Action Center leaves the stock menu')
 })
 
 test('quick settings priming opens and closes without animation', () => {

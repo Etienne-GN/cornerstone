@@ -39,8 +39,9 @@ const BOX_ACTORS = {
 }
 
 export class MirrorController {
-  constructor(settings) {
+  constructor(settings, openActionCenter = null) {
     this._settings = settings
+    this._openActionCenter = openActionCenter
     this._panels = []
     this._panelManager = null
     this._states = new Map()
@@ -166,6 +167,7 @@ export class MirrorController {
           monitorIndex: panel.monitor.index,
           menuManager: panel.panel.menuManager ?? panel.menuManager,
           vertical: panel.checkIfVertical(),
+          openActionCenter: (actor) => this._openActionCenter?.(actor) ?? false,
         },
         mirrors: new Map(),
         quickSettings: null,
