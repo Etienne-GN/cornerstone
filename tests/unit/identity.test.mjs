@@ -69,15 +69,15 @@ after(() => {
   for (const wt of worktrees) {
     try {
       git(repo, 'worktree', 'remove', '--force', wt)
-    } catch {
-      // worktree add may have failed; the directory is removed below
+    } catch (e) {
+      console.error('[identity.test] teardown worktree remove:', e.message)
     }
     rmSync(wt, { recursive: true, force: true })
   }
   try {
     git(repo, 'worktree', 'prune')
-  } catch {
-    // nothing to prune
+  } catch (e) {
+    console.error('[identity.test] teardown worktree prune:', e.message)
   }
 })
 
