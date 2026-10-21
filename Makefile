@@ -100,6 +100,8 @@ _build: all
 	cp $(MODULES) _build
 	mkdir -p _build/mirror
 	cp src/mirror/*.js _build/mirror
+	mkdir -p _build/actionCenter
+	cp src/actionCenter/*.js _build/actionCenter
 	mkdir -p _build/ui
 	cp $(UI_MODULES) _build/ui
 

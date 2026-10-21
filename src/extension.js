@@ -32,6 +32,7 @@ import * as PanelSettings from './panelSettings.js'
 
 import * as PanelManager from './panelManager.js'
 import { MirrorController } from './mirror/controller.js'
+import { ActionCenter } from './actionCenter/actionCenter.js'
 import * as AppIcons from './appIcons.js'
 import * as Utils from './utils.js'
 import { releaseUrl } from './releaseLinks.js'
@@ -143,6 +144,9 @@ export default class DashToPanelExtension extends Extension {
 
     this._mirrorController = new MirrorController(SETTINGS)
 
+    this._actionCenter = new ActionCenter()
+    if (SETTINGS.get_boolean('action-center')) this._actionCenter.enable()
+
     let completeEnable = () => {
       panelManager = new PanelManager.PanelManager()
       panelManager.enable()
@@ -173,8 +177,15 @@ export default class DashToPanelExtension extends Extension {
     return this._mirrorController ?? null
   }
 
+  get actionCenter() {
+    return this._actionCenter ?? null
+  }
+
   disable() {
     if (ubuntuDockDelayId) GLib.Source.remove(ubuntuDockDelayId)
+
+    this._actionCenter.disable()
+    this._actionCenter = null
 
     PanelSettings.disable(SETTINGS)
     panelManager.disable()

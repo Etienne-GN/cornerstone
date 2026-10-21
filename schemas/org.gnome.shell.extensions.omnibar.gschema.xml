@@ -1422,5 +1422,10 @@
       <summary>Mirrored indicator catalog</summary>
       <description>Indicators known to the mirror, per monitor (JSON).</description>
     </key>
+    <key type="b" name="action-center">
+      <default>true</default>
+      <summary>Action Center</summary>
+      <description>Show quick settings, notifications and the calendar in one popup.</description>
+    </key>
   </schema>
 </schemalist>
