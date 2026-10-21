@@ -1,3 +1,4 @@
+import Gio from 'gi://Gio'
 import GLib from 'gi://GLib'
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js'
@@ -67,4 +68,31 @@ export async function cycle(n) {
     await disable()
     await enable()
   }
+}
+
+const HOST_SYSTEM_SERVICES = [
+  'org.freedesktop.login1',
+  'org.gnome.DisplayManager',
+  'org.freedesktop.PolicyKit1',
+  'org.freedesktop.NetworkManager',
+]
+
+// Last call of every scenario: run.sh fails a run without this sentinel.
+export function done(scenario) {
+  const [names] = Gio.DBus.system
+    .call_sync(
+      'org.freedesktop.DBus',
+      '/org/freedesktop/DBus',
+      'org.freedesktop.DBus',
+      'ListNames',
+      null,
+      null,
+      Gio.DBusCallFlags.NONE,
+      -1,
+      null,
+    )
+    .deepUnpack()
+  const leaked = names.filter((n) => HOST_SYSTEM_SERVICES.includes(n))
+  assert(!leaked.length, `host services on the system bus: ${leaked}`)
+  console.log(`[omnibar-test] DONE ${scenario}`)
 }
