@@ -21,6 +21,13 @@ name="$2"
   exit 2
 }
 
+# GType names cannot contain spaces or dots.
+new_type="${name//[^A-Za-z0-9]/}"
+[[ "$new_type" =~ ^[A-Za-z] ]] || {
+  echo "display name must start with a letter: $name" >&2
+  exit 2
+}
+
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
@@ -31,7 +38,8 @@ meta() {
 old_uuid="$(meta uuid)"
 old_schema="$(meta settings-schema)"
 old_domain="$(meta gettext-domain)"
-for v in "$old_uuid" "$old_schema" "$old_domain"; do
+old_name="$(meta name)"
+for v in "$old_uuid" "$old_schema" "$old_domain" "$old_name"; do
   [[ -n "$v" ]] || {
     echo "cannot read current identity from metadata.json" >&2
     exit 1
@@ -73,4 +81,18 @@ sed -i \
 
 if [[ "$old_domain" != "$slug" && -f "po/$old_domain.pot" ]]; then
   mv "po/$old_domain.pot" "po/$slug.pot"
+fi
+
+# GType names are prefixed with the display name reduced to its
+# alphanumerics, log lines with [<slug>].
+old_type="${old_name//[^A-Za-z0-9]/}"
+found="$(grep -rlE --include='*.js' \
+  -e "GTypeName: '$old_type" -e "\\[$old_domain\\]" src)" ||
+  [[ $? -eq 1 ]]
+mapfile -t sources <<<"$found"
+if [[ -n "$found" ]]; then
+  sed -i \
+    -e "s|GTypeName: '$old_type|GTypeName: '$new_type|g" \
+    -e "s|\\[$old_domain\\]|[$slug]|g" \
+    "${sources[@]}"
 fi

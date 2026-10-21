@@ -125,4 +125,8 @@ test('rename.sh rewrites the identity on a worktree copy', () => {
     JSON.parse(read(wt, 'metadata.json'))['shell-version'].join(),
     '50,51',
   )
+  assert.equal(grepLiterals(wt, "GTypeName: 'Omnibar|\\[omnibar\\]"), '')
+  const mirror = read(wt, 'src/mirror/mirroredIndicatorButton.js')
+  assert.match(mirror, /GTypeName: 'FooBarMirroredIndicatorButton'/)
+  assert.match(read(wt, 'src/mirror/policy.js'), /`\[foo\] mirror policy:/)
 })
