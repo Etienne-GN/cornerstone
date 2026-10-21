@@ -102,6 +102,7 @@ nested_env=(
   OMNIBAR_EXT_DIR="$ext_dir"
   NESTED_MONITORS="$monitors"
   NESTED_VERTICAL="$vertical"
+  NESTED_LOG="$log"
   DBUS_SYSTEM_BUS_ADDRESS="unix:path=$sysbus_sock"
 )
 

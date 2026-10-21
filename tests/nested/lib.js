@@ -16,6 +16,16 @@ export const UUID = readMetadata().uuid
 export const MONITORS = Number(GLib.getenv('NESTED_MONITORS') ?? 1)
 export const VERTICAL = GLib.getenv('NESTED_VERTICAL') === '1'
 
+// Lines of this run's shell log matching `pattern`, for warnings that do not
+// fail a run by themselves.
+export function logLines(pattern) {
+  const [, bytes] = GLib.file_get_contents(GLib.getenv('NESTED_LOG'))
+  return new TextDecoder()
+    .decode(bytes)
+    .split('\n')
+    .filter((line) => pattern.test(line))
+}
+
 export function assert(cond, msg) {
   if (!cond) throw new Error(`Assertion failed: ${msg}`)
 }
