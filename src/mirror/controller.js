@@ -73,7 +73,13 @@ export class MirrorController {
   // destroys their boxes.
   detach() {
     this._timeoutsHandler.removeWithLabel(REFRESH)
-    for (const panel of this._panels) this._clearPanel(panel)
+    for (const panel of this._panels) {
+      try {
+        this._clearPanel(panel)
+      } catch (e) {
+        console.error('[omnibar] mirror detach', e)
+      }
+    }
     this._panels = []
     this._states.clear()
   }

@@ -276,8 +276,10 @@ if grep -n 'JS ERROR' "$checked" >&2; then
   fail=1
 fi
 # Error level only: the stock shell logs Gjs-CRITICAL GC warnings for its
-# own panel actors at shutdown, which must not fail a run.
-if grep -n -E '(CRITICAL|ERROR) \*\*.*\[omnibar\]' "$checked" >&2; then
+# own panel actors at shutdown, which must not fail a run. Errors a scenario
+# raises on purpose carry the injected-fault marker and are left out.
+if grep -n -E '(CRITICAL|ERROR) \*\*.*\[omnibar\]' "$checked" |
+  grep -v 'omnibar-test injected fault' >&2; then
   echo "FAIL $scenario: [omnibar] error in $log" >&2
   fail=1
 fi

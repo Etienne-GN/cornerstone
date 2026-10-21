@@ -143,6 +143,13 @@ class Icon extends Actor {}
 class BoxLayout extends Actor {}
 class Clone extends Actor {}
 
+const logged = []
+const fakeConsole = {
+  error: (...args) => logged.push(args),
+  warn() {},
+  log() {},
+}
+
 const registered = []
 const removedSources = []
 const timeouts = new Map()
@@ -151,6 +158,7 @@ const menuCalls = []
 const workAreaRequests = []
 
 const fakes = {
+  console: fakeConsole,
   St: {
     Widget: Actor,
     BoxLayout,
@@ -670,3 +678,120 @@ for (const [name, attach] of Object.entries(paths)) {
     delete fakes.Main.panel.statusArea[role]
   })
 }
+
+const controllerPath = fileURLToPath(
+  new URL('../../src/mirror/controller.js', import.meta.url),
+)
+
+class FakeTimeouts {
+  constructor() {
+    this.labels = new Map()
+  }
+  addWithLabel(label, [, , callback]) {
+    this.labels.set(label, callback)
+  }
+  removeWithLabel(label) {
+    this.labels.delete(label)
+  }
+  destroy() {
+    this.labels.clear()
+  }
+}
+
+const shellPanel = Object.assign(new Actor(), {
+  statusArea: fakes.Main.panel.statusArea,
+  _leftBox: new BoxLayout(),
+  _centerBox: new BoxLayout(),
+  _rightBox: new BoxLayout(),
+})
+
+const { MirrorController } = loadGjs(controllerPath, {
+  console: fakeConsole,
+  GObject: fakes.GObject,
+  Main: { ...fakes.Main, panel: shellPanel, extensionManager: {} },
+  global: fakes.global,
+  Utils: {
+    GlobalSignalsHandler: class {
+      add() {}
+      destroy() {}
+    },
+    TimeoutsHandler: FakeTimeouts,
+  },
+  MirroredIndicatorButton,
+  clearCatalog() {},
+  publishCatalog() {},
+  dtpPrimaryIndex: () => 0,
+  BOX_NAMES: ['left', 'center', 'right'],
+  planMirrors: () => [],
+  VISIBILITY_KEY: 'mirror-visibility',
+  indicatorIsEnabled: () => true,
+  monitorKey: () => 'key',
+})
+
+const settingsFake = { get_boolean: () => true }
+
+function controllerPanels(controller, n, role) {
+  const panels = []
+  for (let i = 0; i < n; i++) {
+    const panel = {
+      monitor: { index: i + 1 },
+      panel: {},
+      checkIfVertical: () => false,
+      _setAllocationMap() {},
+      updateElementPositions() {},
+    }
+    const state = controller._stateFor(panel)
+    panels.push({ panel, entry: controller._createMirror(panel, state, role) })
+  }
+  controller._panels = panels.map(({ panel }) => panel)
+  return panels
+}
+
+test('a throwing mirror cleanup still destroys it and every other panel', () => {
+  const role = 'omni-faulty'
+  const box = new BoxLayout()
+  box.add_child(new Label({ text: 'x' }))
+  makeSource(role, box)
+  const controller = new MirrorController(settingsFake)
+  const panels = controllerPanels(controller, 3, role)
+  const faulty = panels[0].entry.mirror
+  faulty._cleanup = () => {
+    throw new Error('injected')
+  }
+
+  logged.length = 0
+  assert.doesNotThrow(() => controller.detach())
+  for (const { entry } of panels)
+    assert.equal(entry.mirror.destroyed, true, 'super.destroy() ran')
+  for (const { entry } of panels.slice(1))
+    assert.equal(entry.mirror._sourceIndicator, null, 'other mirrors cleaned')
+  assert.deepEqual(
+    logged.map(([context, e]) => [context, e.message]),
+    [['[omnibar] mirror cleanup', 'injected']],
+  )
+  controller.destroy()
+  delete fakes.Main.panel.statusArea[role]
+})
+
+test('a panel that fails to clear does not stop the others', () => {
+  const role = 'omni-badpanel'
+  const box = new BoxLayout()
+  box.add_child(new Label({ text: 'x' }))
+  makeSource(role, box)
+  const controller = new MirrorController(settingsFake)
+  const panels = controllerPanels(controller, 2, role)
+  panels[0].panel._omniSystemMenu = {}
+  panels[0].panel._setAllocationMap = () => {
+    throw new Error('panel gone')
+  }
+
+  logged.length = 0
+  assert.doesNotThrow(() => controller.detach())
+  assert.equal(panels[1].entry.mirror.destroyed, true, 'second panel cleared')
+  assert.deepEqual(
+    logged.map(([context, e]) => [context, e.message]),
+    [['[omnibar] mirror detach', 'panel gone']],
+  )
+  controller.destroy()
+  delete fakes.Main.panel.statusArea[role]
+})

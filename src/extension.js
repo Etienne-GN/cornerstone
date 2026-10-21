@@ -52,6 +52,16 @@ export let PERSISTENTSTORAGE = null
 export let EXTENSION_PATH = null
 export let tracker = null
 
+function isolated(component, teardown) {
+  try {
+    Promise.resolve(teardown()).catch((e) =>
+      console.error(`[omnibar] disable ${component}`, e),
+    )
+  } catch (e) {
+    console.error(`[omnibar] disable ${component}`, e)
+  }
+}
+
 export default class DashToPanelExtension extends Extension {
   constructor(metadata) {
     super(metadata)
@@ -194,12 +204,13 @@ export default class DashToPanelExtension extends Extension {
   disable() {
     if (ubuntuDockDelayId) GLib.Source.remove(ubuntuDockDelayId)
 
-    this._actionCenter.destroy()
+    // Each teardown step runs even when an earlier one throws.
+    isolated('action center', () => this._actionCenter?.destroy())
     this._actionCenter = null
 
-    PanelSettings.disable(SETTINGS)
-    panelManager.disable()
-    this._mirrorController.destroy()
+    isolated('panel settings', () => PanelSettings.disable(SETTINGS))
+    isolated('panel manager', () => panelManager?.disable())
+    isolated('mirror controller', () => this._mirrorController?.destroy())
     this._mirrorController = null
     PanelSettings.clearCache()
 

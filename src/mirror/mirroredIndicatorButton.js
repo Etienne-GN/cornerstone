@@ -3344,9 +3344,16 @@ export const MirroredIndicatorButton = GObject.registerClass(
       this._host = null
     }
 
+    // GNOME disables extensions on every screen lock: a failed cleanup must
+    // not keep the actor alive or abort the caller's teardown.
     destroy() {
-      this._cleanup()
-      super.destroy()
+      try {
+        this._cleanup()
+      } catch (e) {
+        console.error('[omnibar] mirror cleanup', e)
+      } finally {
+        super.destroy()
+      }
     }
   },
 )
