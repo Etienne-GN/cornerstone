@@ -42,15 +42,15 @@ export class ActionCenterPreferences {
       Gio.SettingsBindFlags.GET,
     )
 
+    this._settingId = settings.connect(`changed::${BANNER_CLICK_KEY}`, () =>
+      this._syncBanner(),
+    )
     this._syncBanner()
     this._rowId = this._bannerRow.connect('notify::selected', () => {
       if (this._syncing) return
       if (this._bannerRow.selected !== settings.get_enum(BANNER_CLICK_KEY))
         settings.set_enum(BANNER_CLICK_KEY, this._bannerRow.selected)
     })
-    this._settingId = settings.connect(`changed::${BANNER_CLICK_KEY}`, () =>
-      this._syncBanner(),
-    )
   }
 
   _syncBanner() {
