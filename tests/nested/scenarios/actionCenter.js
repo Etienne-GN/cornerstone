@@ -15,6 +15,7 @@ import {
   done,
   enable,
   ext,
+  logLines,
   sleep,
   waitFor,
 } from '../lib.js'
@@ -102,6 +103,10 @@ async function secondarySource() {
     return c?.mapped && c.has_allocation() && c.width > 0 && c
   })
   return { panel, container }
+}
+
+function usable(actor) {
+  return actor?.mapped && actor.has_allocation() && actor.width > 0
 }
 
 function contains(ancestor, actor) {
@@ -223,6 +228,75 @@ async function assertStockOverlayAligned() {
   assertNoModal('stock quick settings closed')
 }
 
+function routedMethods() {
+  const watched = [
+    'toggleCalendar',
+    'toggleQuickSettings',
+    'closeCalendar',
+    'closeQuickSettings',
+  ].map((name) => [Main.panel, name])
+  watched.push([qsMenu(), 'close'])
+  for (const statusArea of [Main.panel.statusArea, secondaryPanel().statusArea])
+    for (const role of ['dateMenu', 'quickSettings'])
+      for (const name of ['toggle', 'open'])
+        watched.push([statusArea[role].menu, name])
+  return watched
+}
+
+function ownOverrides() {
+  return routedMethods()
+    .filter(([obj, name]) => Object.hasOwn(obj, name))
+    .map(([, name]) => name)
+}
+
+// GNOME's own date menu, with the calendar and the message list in it.
+async function assertStockDateMenu(what) {
+  const dm = dateMenu()
+  Main.panel.toggleCalendar()
+  await waitFor(() => dm.menu.isOpen && dm._messageList.mapped)
+  for (const [name, actor] of [
+    ['message list', dm._messageList],
+    ['calendar', dm._calendar],
+  ]) {
+    assert(contains(dm.menu.actor, actor), `${what}: ${name} not in date menu`)
+    assert(actor.mapped, `${what}: ${name} not shown in the date menu`)
+  }
+  Main.panel.closeCalendar()
+  await waitFor(() => !dm.menu.isOpen)
+  await sleep(300)
+  assertNoModal(`${what}: stock date menu closed`)
+}
+
+async function toggleSetting(ac, snap, round, popupOpen) {
+  const settings = ext().stateObj.getSettings()
+  const what = `setting toggle ${round}`
+
+  if (popupOpen) await openOnSecondary(`${what} open`)
+  settings.set_boolean('action-center', false)
+  await waitFor(() => !ac.isEnabled)
+  assert(ext().stateObj.actionCenter === ac, `${what}: action center replaced`)
+  assertRestored(snap, `${what} off`)
+  const left = ownOverrides()
+  assert(!left.length, `${what} off: overrides left: ${left.join(', ')}`)
+  await assertStockDateMenu(`${what} off`)
+
+  settings.set_boolean('action-center', true)
+  await waitFor(() => ac.isEnabled)
+  assertHosted(ac, `${what} on`)
+  const watched = routedMethods()
+  assert(
+    ownOverrides().length === watched.length,
+    `${what} on: not every routed method is overridden`,
+  )
+  Main.panel.toggleCalendar()
+  await waitFor(() => ac.isOpen)
+  assert(!dateMenu().menu.isOpen, `${what} on: stock date menu opened`)
+  ac.close({ animate: false })
+  await waitFor(() => !ac.isOpen)
+  await sleep(300)
+  assertNoModal(`${what} on: closed`)
+}
+
 export async function run() {
   assert(MONITORS === 2, 'actionCenter needs --monitors 2')
 
@@ -267,6 +341,15 @@ export async function run() {
 
   await enable()
   ac = ext().stateObj.actionCenter
+  // Stock BoxPointer gives one NaN frame when opened on a bar that was just
+  // built; let the rebuilt bars allocate first.
+  await secondarySource()
+  await waitFor(() => usable(dateMenu()))
+  for (let round = 1; round <= 3; round++)
+    await toggleSetting(ac, snap, round, round === 2)
+  const nan = logLines(/isnan|\bNaN\b/)
+  assert(!nan.length, `NaN allocations: ${nan.join(' | ')}`)
+
   assertHosted(ac, 'final enable')
   external.toggle.destroy()
   external.indicator.destroy()

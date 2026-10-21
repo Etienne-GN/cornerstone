@@ -35,6 +35,7 @@ import { WidgetMover } from './widgetMover.js'
 // quickSettings.js keeps this private.
 const DIM_BRIGHTNESS = -0.4
 const DIM_PROPERTY = '@effects.dim.brightness'
+const ENABLED_KEY = 'action-center'
 
 class ActionCenterMenu extends PopupMenu.PopupMenu {
   constructor(qsMenu) {
@@ -123,6 +124,27 @@ export class ActionCenter {
     this._menu = null
     this._source = null
     this._router = null
+    this._settingId = 0
+  }
+
+  // Follows the action-center key until destroy().
+  watchSetting() {
+    if (!this._settingId)
+      this._settingId = this._settings.connect(`changed::${ENABLED_KEY}`, () =>
+        this._syncSetting(),
+      )
+    this._syncSetting()
+  }
+
+  destroy() {
+    if (this._settingId) this._settings.disconnect(this._settingId)
+    this._settingId = 0
+    this.disable()
+  }
+
+  _syncSetting() {
+    if (this._settings.get_boolean(ENABLED_KEY)) this.enable()
+    else this.disable()
   }
 
   get isEnabled() {

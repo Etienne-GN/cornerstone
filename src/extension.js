@@ -147,7 +147,7 @@ export default class DashToPanelExtension extends Extension {
     )
 
     this._actionCenter = new ActionCenter(SETTINGS)
-    if (SETTINGS.get_boolean('action-center')) this._actionCenter.enable()
+    this._actionCenter.watchSetting()
 
     let completeEnable = () => {
       panelManager = new PanelManager.PanelManager()
@@ -194,7 +194,7 @@ export default class DashToPanelExtension extends Extension {
   disable() {
     if (ubuntuDockDelayId) GLib.Source.remove(ubuntuDockDelayId)
 
-    this._actionCenter.disable()
+    this._actionCenter.destroy()
     this._actionCenter = null
 
     PanelSettings.disable(SETTINGS)
