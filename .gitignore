@@ -8,3 +8,4 @@ ui/*.ui.h
 node_modules/
 .nested/
 package-lock.json
+_build/
