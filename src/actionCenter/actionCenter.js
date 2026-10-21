@@ -34,6 +34,7 @@ import { WidgetMover } from './widgetMover.js'
 
 // quickSettings.js keeps this private.
 const DIM_BRIGHTNESS = -0.4
+const DIM_PROPERTY = '@effects.dim.brightness'
 
 class ActionCenterMenu extends PopupMenu.PopupMenu {
   constructor(qsMenu) {
@@ -98,12 +99,21 @@ class ActionCenterMenu extends PopupMenu.PopupMenu {
       alpha: 255,
     })
 
-    this._boxPointer.ease_property('@effects.dim.brightness', color, {
+    this._boxPointer.ease_property(DIM_PROPERTY, color, {
       mode: Clutter.AnimationMode.EASE_OUT_QUAD,
       duration: POPUP_ANIMATION_TIME,
-      onStopped: () => (this._dimEffect.enabled = dim),
+      onStopped: () => {
+        if (this._dimEffect) this._dimEffect.enabled = dim
+      },
     })
     this._dimEffect.enabled = true
+  }
+
+  // A dim easing still running would reach the effect after it is disposed.
+  destroy() {
+    this._boxPointer.remove_transition(DIM_PROPERTY)
+    this._dimEffect = null
+    super.destroy()
   }
 }
 
@@ -212,19 +222,21 @@ export class ActionCenter {
     this._step('widgets', () => this._mover.restoreAll())
 
     // Never let menu.destroy() take a GNOME widget with it.
-    for (const actor of [
-      qsMenu._grid,
-      qsMenu._overlay,
-      dateMenu._messageList,
-      this._calendarColumn,
-    ]) {
-      if (!menu.actor.contains(actor)) continue
-      console.error(
-        '[omnibar] action center: widget still hosted after restore',
-        new Error(String(actor)),
-      )
-      actor.get_parent().remove_child(actor)
-    }
+    this._step('safety pass', () => {
+      for (const actor of [
+        qsMenu._grid,
+        qsMenu._overlay,
+        dateMenu._messageList,
+        this._calendarColumn,
+      ]) {
+        if (!menu.actor.contains(actor)) continue
+        console.error(
+          '[omnibar] action center: widget still hosted after restore',
+          new Error(String(actor)),
+        )
+        actor.get_parent().remove_child(actor)
+      }
+    })
 
     if (this._bannerBlocked) {
       Main.messageTray.bannerBlocked = false
