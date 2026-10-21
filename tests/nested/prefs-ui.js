@@ -1,10 +1,31 @@
 // Loads the Omnibar preferences page and binds the Action Center rows
 // against in-memory settings. Spawned by the prefs scenario so GTK only
 // ever talks to the nested compositor.
-import Adw from 'gi://Adw?version=1'
 import Gio from 'gi://Gio'
 import GLib from 'gi://GLib'
-import Gtk from 'gi://Gtk?version=4.0'
+import System from 'system'
+
+// Checked before GTK or libadwaita is loaded: anything else could reach the
+// live display.
+const DISPLAY_NAME = 'omnibar-nested'
+const runtime = GLib.getenv('XDG_RUNTIME_DIR') ?? ''
+const refusal =
+  GLib.getenv('WAYLAND_DISPLAY') !== DISPLAY_NAME
+    ? `WAYLAND_DISPLAY is not ${DISPLAY_NAME}`
+    : !runtime.includes('/.nested/')
+      ? `XDG_RUNTIME_DIR ${runtime} is not under .nested/`
+      : !GLib.file_test(`${runtime}/${DISPLAY_NAME}`, GLib.FileTest.EXISTS)
+        ? `no ${DISPLAY_NAME} socket in ${runtime}`
+        : GLib.getenv('DISPLAY') !== null
+          ? 'DISPLAY is set'
+          : null
+if (refusal) {
+  console.error(`prefs-ui: refusing to run: ${refusal}`)
+  System.exit(2)
+}
+
+const { default: Adw } = await import('gi://Adw?version=1')
+const { default: Gtk } = await import('gi://Gtk?version=4.0')
 
 const extDir = GLib.getenv('OMNIBAR_EXT_DIR')
 const { ActionCenterPreferences } = await import(

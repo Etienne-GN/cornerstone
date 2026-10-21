@@ -18,6 +18,7 @@ import {
 export const METRICS = {}
 
 const ROLE = 'omniTest'
+const PREFS_UI_TIMEOUT_S = 30
 
 function secondaryPanel() {
   return global.dashToPanel?.panels?.find((p) => p.isStandalone && !p.isPrimary)
@@ -54,16 +55,32 @@ async function checkPreferencesUi() {
   const here = GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0])
   const script = GLib.build_filenamev([here, '..', 'prefs-ui.js'])
   const proc = launcher.spawnv(['gjs', '-m', script])
-  const [out] = await new Promise((resolve, reject) =>
-    proc.communicate_utf8_async(null, null, (p, res) => {
-      try {
-        resolve(p.communicate_utf8_finish(res).slice(1))
-      } catch (e) {
-        reject(e)
-      }
-    }),
+  let timedOut = false
+  const timeoutId = GLib.timeout_add_seconds(
+    GLib.PRIORITY_DEFAULT,
+    PREFS_UI_TIMEOUT_S,
+    () => {
+      timedOut = true
+      proc.force_exit()
+      return GLib.SOURCE_REMOVE
+    },
   )
+  let out
+  try {
+    ;[out] = await new Promise((resolve, reject) =>
+      proc.communicate_utf8_async(null, null, (p, res) => {
+        try {
+          resolve(p.communicate_utf8_finish(res).slice(1))
+        } catch (e) {
+          reject(e)
+        }
+      }),
+    )
+  } finally {
+    if (!timedOut) GLib.source_remove(timeoutId)
+  }
   console.log(`[omnibar-test] prefs-ui: ${out.trim()}`)
+  assert(!timedOut, `prefs-ui killed after ${PREFS_UI_TIMEOUT_S} s`)
   assert(proc.get_successful(), `prefs-ui failed: ${out.trim()}`)
 }
 
