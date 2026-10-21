@@ -51,12 +51,14 @@ function overrideProperty(object, name, value) {
 
 // Openers anchor the menu's BoxPointer to the mirror before positioning
 // it, so its original source must be recorded first.
-function captureAnchorState(menu) {
-  return [menu.box, menu._boxPointer].filter(Boolean).map((actor) => ({
-    actor,
-    sourceActor: actor._sourceActor,
-    sourceAllocation: actor._sourceAllocation,
-  }))
+function captureAnchorState(menu, unmirror = (actor) => actor) {
+  return [menu.box, menu._boxPointer].filter(Boolean).map((actor) => {
+    const sourceActor = unmirror(actor._sourceActor)
+    // Another mirror's cached allocation is not the real source's.
+    const sourceAllocation =
+      sourceActor === actor._sourceActor ? actor._sourceAllocation : undefined
+    return { actor, sourceActor, sourceAllocation }
+  })
 }
 
 function restoreAnchorState(anchorState) {
@@ -2713,9 +2715,11 @@ export const MirroredIndicatorButton = GObject.registerClass(
         this._workspaceMenuPendingRestore = null
       }
 
-      const originalSourceActor = menu.sourceActor
-      const originalBoxPointer = menu.box?._sourceActor
-      const anchorState = captureAnchorState(menu)
+      const originalSourceActor = this._unmirroredAnchor(menu.sourceActor)
+      const originalBoxPointer = this._unmirroredAnchor(menu.box?._sourceActor)
+      const anchorState = captureAnchorState(menu, (actor) =>
+        this._unmirroredAnchor(actor),
+      )
       let restoreMethods = null
       let menuBoxState = null
       let openStateId = 0
@@ -2843,9 +2847,11 @@ export const MirroredIndicatorButton = GObject.registerClass(
       }
 
       // Store original state variables
-      const originalSourceActor = menu.sourceActor
-      const originalBoxPointer = menu.box?._sourceActor
-      const anchorState = captureAnchorState(menu)
+      const originalSourceActor = this._unmirroredAnchor(menu.sourceActor)
+      const originalBoxPointer = this._unmirroredAnchor(menu.box?._sourceActor)
+      const anchorState = captureAnchorState(menu, (actor) =>
+        this._unmirroredAnchor(actor),
+      )
       let restoreMethods = null
       let menuBoxState = null
       let openStateId = 0
@@ -2986,6 +2992,14 @@ export const MirroredIndicatorButton = GObject.registerClass(
       return () => {
         for (const restore of restores.reverse()) restore()
       }
+    }
+
+    // Another mirror of the same source may still hold the menu anchor
+    // during its close delay; it is not the original to restore.
+    _unmirroredAnchor(actor) {
+      return actor?._omniMirror && actor !== this
+        ? this._sourceIndicator
+        : actor
     }
 
     // A menu left open when this mirror goes away (screen lock disables the

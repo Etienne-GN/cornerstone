@@ -858,3 +858,31 @@ test('controller stops syncing once the shell panel or a box is destroyed', () =
     gone.disconnectObject = disconnectObject
   }
 })
+
+for (const [name, open] of [
+  ['generic', (mirror) => mirror._onButtonPress(null)],
+  ['workspace', (mirror) => mirror._openWorkspaceIndicatorMenu()],
+]) {
+  test(`${name}: a second mirror records the real source, not the first`, () => {
+    timeouts.clear()
+    const role = `omni-two-${name}`
+    const scenario = menuScenario(role, paths.generic)
+    const { menu, mirror: first } = scenario
+    const second = new MirroredIndicatorButton({ vertical: false }, role)
+    second._quickSettingsMenuPrimed = true
+
+    open(first)
+    fakes.menuClose(menu)
+    assert.equal(menu.sourceActor, first, 'anchored to the first while closing')
+    open(second)
+    assert.equal(menu.sourceActor, second, 'anchored to the second')
+    fakes.menuClose(menu)
+    runTimeouts()
+    assertSourceRestored(scenario, name)
+
+    first.destroy()
+    second.destroy()
+    assertSourceRestored(scenario, name)
+    delete fakes.Main.panel.statusArea[role]
+  })
+}
