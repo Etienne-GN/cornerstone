@@ -2702,6 +2702,15 @@ export const MirroredIndicatorButton = GObject.registerClass(
       const menu = this._sourceIndicator?.menu
       if (!menu) return Clutter.EVENT_PROPAGATE
 
+      if (this._workspaceMenuRestoreId) {
+        GLib.source_remove(this._workspaceMenuRestoreId)
+        this._workspaceMenuRestoreId = 0
+      }
+      if (this._workspaceMenuPendingRestore) {
+        this._workspaceMenuPendingRestore()
+        this._workspaceMenuPendingRestore = null
+      }
+
       const originalSourceActor = menu.sourceActor
       const originalBoxPointer = menu.box?._sourceActor
       const anchorState = captureAnchorState(menu)
@@ -2775,6 +2784,8 @@ export const MirroredIndicatorButton = GObject.registerClass(
         restoreMethods?.()
         restoreMethods = null
         this._restoreMenuBoxOverrides(menuBoxState)
+        if (this._workspaceMenuRestoreId)
+          GLib.source_remove(this._workspaceMenuRestoreId)
         restoreSourceActor()
         this.remove_style_pseudo_class('active')
         this.remove_style_pseudo_class('checked')

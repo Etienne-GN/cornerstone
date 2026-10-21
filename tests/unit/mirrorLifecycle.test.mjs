@@ -795,3 +795,19 @@ test('a panel that fails to clear does not stop the others', () => {
   controller.destroy()
   delete fakes.Main.panel.statusArea[role]
 })
+
+test('workspace: a reopen within the restore delay keeps the real source', () => {
+  for (const closeLast of [true, false]) {
+    timeouts.clear()
+    const scenario = menuScenario('omni-workspace', paths.generic)
+    const { menu, mirror } = scenario
+    mirror._openWorkspaceIndicatorMenu()
+    fakes.menuClose(menu)
+    mirror._openWorkspaceIndicatorMenu()
+    if (closeLast) fakes.menuClose(menu)
+    mirror.destroy()
+    assertSourceRestored(scenario, `workspace closeLast=${closeLast}`)
+    assert.equal(timeouts.size, 0, 'no restore timer left')
+    delete fakes.Main.panel.statusArea['omni-workspace']
+  }
+})
