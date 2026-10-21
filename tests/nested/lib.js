@@ -1,5 +1,6 @@
 import Gio from 'gi://Gio'
 import GLib from 'gi://GLib'
+import Shell from 'gi://Shell'
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import { ExtensionState } from 'resource:///org/gnome/shell/misc/extensionUtils.js'
@@ -24,6 +25,34 @@ export function logLines(pattern) {
     .decode(bytes)
     .split('\n')
     .filter((line) => pattern.test(line))
+}
+
+// Writes the whole nested stage to .nested/<scenario>/<name>.png and
+// returns the path.
+export function captureStage(name) {
+  if (!/^[A-Za-z0-9_-]+$/.test(name))
+    throw new Error(`invalid capture name: ${name}`)
+
+  const path = `${GLib.path_get_dirname(GLib.getenv('NESTED_LOG'))}/${name}.png`
+  const stream = Gio.File.new_for_path(path).replace(
+    null,
+    false,
+    Gio.FileCreateFlags.NONE,
+    null,
+  )
+  const shooter = new Shell.Screenshot()
+  return new Promise((resolve, reject) => {
+    shooter.screenshot(false, stream, (obj, res) => {
+      try {
+        obj.screenshot_finish(res)
+        stream.close(null)
+        console.log(`[omnibar-test] captured ${path}`)
+        resolve(path)
+      } catch (e) {
+        reject(e)
+      }
+    })
+  })
 }
 
 export function assert(cond, msg) {
