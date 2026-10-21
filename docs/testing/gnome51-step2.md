@@ -135,6 +135,16 @@ GNOME disables extensions while the screen is locked. Repeat 3 times:
 4. The clock and quick settings open the Action Center again, on each
    monitor; nothing is duplicated; GNOME's own menus never show.
 
+Then one round with the Action Center off:
+
+1. `dconf write /org/gnome/shell/extensions/omnibar/action-center false`
+2. `Super+L`, then unlock.
+3. The clock opens GNOME's calendar (calendar and notifications in it),
+   quick settings opens GNOME's system menu, Super+V/M/S open GNOME's menus.
+   No Action Center anywhere.
+4. `dconf write /org/gnome/shell/extensions/omnibar/action-center true`: the
+   clock and quick settings open the Action Center again.
+
 ## 11. Disable with the popup open
 
 ```
@@ -158,7 +168,9 @@ The Action Center works again.
 journalctl --user -b --since "$(cat ~/git/omnibar/.nested/omnibar-step2-start.txt)" | grep -E 'JS ERROR|\[omnibar\]|already disposed|isnan'
 ```
 
-Expected output: empty. If the user journal holds nothing from gnome-shell,
+Expected output: empty. Omnibar logs only errors with the `[omnibar]` prefix,
+so every `[omnibar]` line is a failure. If the user journal holds nothing
+from gnome-shell,
 use the system journal as in step 1 item 7 (same grep).
 
 Any hit is a failure. Keep the matching lines and the time of the action that
