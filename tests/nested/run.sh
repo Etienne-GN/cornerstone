@@ -225,7 +225,10 @@ done
 if [[ $viewer -eq 1 ]]; then
   # Interactive: no timeout, normal-ish priority; ends when the shell exits
   # or on Ctrl+C (the INT trap exits and the EXIT trap kills the sessions).
-  nested_env+=(WAYLAND_DISPLAY="$host_display")
+  # The devkit viewer receives the nested stage over the host PipeWire daemon;
+  # point PipeWire (only) at the host runtime dir.
+  nested_env+=(WAYLAND_DISPLAY="$host_display"
+    PIPEWIRE_RUNTIME_DIR="${XDG_RUNTIME_DIR:?host XDG_RUNTIME_DIR needed}")
   shell_cmd=(nice -n 10)
   echo "viewer mode: log $log (Ctrl+C to stop)" >&2
 else
