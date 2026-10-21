@@ -265,6 +265,12 @@ if [[ $viewer -eq 0 ]] &&
   echo "FAIL $scenario: no '[omnibar-test] DONE $scenario' in $log" >&2
   fail=1
 fi
+# Headless runs check the whole log, shutdown included; make sure there was
+# one, since a scenario ending with the extension enabled tests teardown.
+if [[ $viewer -eq 0 ]] && ! grep -q 'Shutting down GNOME Shell' "$log"; then
+  echo "FAIL $scenario: shell did not reach shutdown" >&2
+  fail=1
+fi
 if grep -n 'JS ERROR' "$checked" >&2; then
   echo "FAIL $scenario: JS ERROR in $log" >&2
   fail=1

@@ -336,7 +336,9 @@ test('cleanup releases everything and is idempotent', () => {
     _labelCopyBindings: [live],
     _quickSettingsSource: live,
     _sourceSizeChangedId: 11,
-    _allocationCloneSignals: [{ source: live, id: 12 }],
+    _allocationCloneSignals: [
+      { source: live, allocationId: 12, destroyId: 16 },
+    ],
     _workspacePreviewWindowSignalIds: [{ object: live, id: 13 }],
     _forwardClickTimeoutId: 14,
     _allocationCloneTimeouts: [15],
@@ -353,10 +355,23 @@ test('cleanup releases everything and is idempotent', () => {
   assert.equal(mirror._host, null)
   assert.deepEqual(removedSources, [14, 15])
   assert.deepEqual(removedMenus, ['menu'])
-  for (const id of [10, 11, 12, 13, 'unbind', 'restore'])
+  for (const id of [10, 11, 12, 13, 16, 'unbind', 'restore'])
     assert.ok(released.includes(id), String(id))
   mirror._cleanup()
   assert.deepEqual(removedSources, [14, 15], 'cleanup must be idempotent')
+})
+
+// ArcMenu destroys its widget before its button: a tracked source that is
+// already gone must not be disconnected again at cleanup.
+test('cleanup skips allocation sources destroyed first', () => {
+  const source = new Actor()
+  const mirror = bare({})
+  mirror._trackSourceAllocation(source, () => {})
+  assert.equal(source.handlers.size, 2)
+  source.destroy()
+  source.disconnect = () => assert.fail('disconnect on a destroyed source')
+  mirror._cleanup()
+  assert.equal(mirror._allocationCloneSignals, null)
 })
 
 // Issue #40 upstream: repeated refreshes must destroy every retired copy

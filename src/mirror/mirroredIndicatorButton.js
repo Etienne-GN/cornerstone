@@ -595,12 +595,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         this._allocationCloneTimeouts = null
       }
 
-      if (this._allocationCloneSignals) {
-        for (const signal of this._allocationCloneSignals) {
-          signal.source.disconnect(signal.id)
-        }
-        this._allocationCloneSignals = null
-      }
+      this._releaseSourceAllocations()
 
       // Source-presence handlers were connected with connectObject(this);
       // GJS auto-disconnects them on destroy, but disconnect explicitly
@@ -929,9 +924,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
       syncSize()
 
-      const allocationId = source.connect('notify::allocation', syncSize)
-      if (!this._allocationCloneSignals) this._allocationCloneSignals = []
-      this._allocationCloneSignals.push({ source, id: allocationId })
+      this._trackSourceAllocation(source, syncSize)
 
       const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
         syncSize()
@@ -1739,9 +1732,30 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
       syncSize()
 
-      const allocationId = source.connect('notify::allocation', syncSize)
-      if (!this._allocationCloneSignals) this._allocationCloneSignals = []
-      this._allocationCloneSignals.push({ source, id: allocationId })
+      this._trackSourceAllocation(source, syncSize)
+    }
+
+    // Sources can lose their children before the source itself emits
+    // destroy (ArcMenu destroys its widget first), so a destroyed source
+    // is dropped instead of being disconnected later.
+    _trackSourceAllocation(source, callback) {
+      this._allocationCloneSignals ??= []
+      const entry = { source, allocationId: 0, destroyId: 0 }
+      entry.allocationId = source.connect('notify::allocation', callback)
+      entry.destroyId = source.connect('destroy', () => {
+        const index = this._allocationCloneSignals?.indexOf(entry) ?? -1
+        if (index !== -1) this._allocationCloneSignals.splice(index, 1)
+      })
+      this._allocationCloneSignals.push(entry)
+    }
+
+    _releaseSourceAllocations() {
+      for (const { source, allocationId, destroyId } of this
+        ._allocationCloneSignals ?? []) {
+        source.disconnect(allocationId)
+        source.disconnect(destroyId)
+      }
+      this._allocationCloneSignals = null
     }
 
     _findAllDisplayWidgets(actor) {
@@ -3295,12 +3309,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         this._allocationCloneTimeouts = null
       }
 
-      if (this._allocationCloneSignals) {
-        for (const signal of this._allocationCloneSignals) {
-          signal.source.disconnect(signal.id)
-        }
-        this._allocationCloneSignals = null
-      }
+      this._releaseSourceAllocations()
 
       for (const release of this._astraSourceSizeReleases ?? []) release()
       this._astraSourceSizeReleases = null

@@ -243,10 +243,15 @@ export const setDisplayUnredirect = (enable) => {
   unredirectEnabled = enable
 }
 
+// Only the constructor needs the live indicator, which is gone once the shell
+// destroys its panel (shutdown) or an extension removes it; name-only callers
+// such as _setAllocationMap must keep working then.
 export const getSystemMenuInfo = function () {
   return {
     name: 'quickSettings',
-    constructor: Main.panel.statusArea.quickSettings.constructor,
+    get constructor() {
+      return Main.panel.statusArea.quickSettings.constructor
+    },
   }
 }
 

@@ -25,3 +25,13 @@ absolute socket path. `XDG_RUNTIME_DIR` stays private.
 `~/.local/share/gnome-shell/extensions` (else `/usr/share/gnome-shell/
 extensions`) into the nested data dir and enables it at startup. The source
 is only read.
+
+## Teardown with third-party extensions
+
+    tests/nested/run.sh teardown --monitors 2 \
+      --with-extension arcmenu@arcmenu.com \
+      --with-extension appindicatorsupport@rgcjonas.gmail.com
+
+Cycles ArcMenu and Omnibar, then ends with both enabled so the shell's own
+shutdown runs under live mirrors. Headless runs check the whole log,
+shutdown included, and fail when the shell never reached shutdown.
