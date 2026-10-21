@@ -27,7 +27,8 @@ root (gitignored). `install --force` unpacks it into
 
 Optional: import the Dash to Panel settings. Omnibar's keys are a superset of
 Dash to Panel's (same key names, plus `mirror-indicators`,
-`mirror-indicator-visibility`, `mirror-indicator-catalog`). Run this before
+`mirror-indicator-visibility`, `mirror-indicator-catalog`, `action-center`,
+`action-center-banner-click`). Run this before
 enabling Omnibar, only if you want it:
 
 ```
@@ -62,6 +63,30 @@ gnome-extensions info omnibar@etienne-gn.github.io
 
 `info` should report `State: ACTIVE`. If it does not list the extension at
 all, the shell did not pick it up: make sure the log out / in was a full one.
+
+## Action Center
+
+Omnibar turns the Action Center on by default. With it on:
+
+- The clock and the system menu (quick settings) of every bar, and the
+  quick settings mirrors, open the Action Center on that bar's monitor
+  instead of GNOME's calendar and system menu.
+- Super+V and Super+M (`toggle-message-tray`) and Super+S
+  (`toggle-quick-settings`) open it on the monitor under the pointer, and
+  close it when it is open.
+- A click on a notification banner opens it. To get GNOME's behaviour
+  (activate the notification), set "Notification banner click" to
+  "Activate the notification".
+
+To get GNOME's own menus back without disabling Omnibar, switch off
+"Action Center" on the "Multi-monitor & Action Center" preferences page, or:
+
+```
+dconf write /org/gnome/shell/extensions/omnibar/action-center false
+```
+
+It takes effect at once, no log out needed. `dconf reset
+/org/gnome/shell/extensions/omnibar/action-center` turns it back on.
 
 ## Roll back
 
