@@ -270,3 +270,121 @@
 #uiGroup.br20 .dashtopanelPanel.dock .showdesktop-button-vertical {
 	border-radius: 0 0 20px 20px !important;
 }
+
+/* Mirrored indicators: rules from Multi Monitor Bar by Frederyk Abryan
+   Palinoan (GPL-2.0-or-later); its side-bar scope maps to
+   .dashtopanelMainPanel.vertical. */
+.dashtopanelMainPanel.vertical .mm-vertical-remap {
+	padding: 0;
+}
+
+.dashtopanelMainPanel.vertical .mm-vertical-remap-items {
+	spacing: 10px;
+}
+
+/* No side padding: anything wider than the bar gets scaled down. */
+.dashtopanelMainPanel.vertical .mm-workspace-indicator {
+	-natural-hpadding: 0;
+	-minimum-hpadding: 0;
+	padding: 8px 0;
+	min-width: 0;
+	min-height: 0;
+	color: #ffffff;
+}
+
+/* Swapped in for .status-label on side bars, whose fixed 8em width from
+   the Workspace Indicator stylesheet would force the name to be shrunk. */
+.dashtopanelMainPanel.vertical .mm-workspace-indicator .mm-workspace-name {
+	font-size: 14px;
+	font-weight: bold;
+	text-align: center;
+	padding: 0;
+}
+
+.dashtopanelMainPanel.vertical .mm-workspace-indicator .panel-status-menu-box {
+	spacing: 6px;
+	padding: 0;
+}
+
+.dashtopanelMainPanel.vertical .mm-workspace-indicator .workspaces-box {
+	spacing: 6px;
+}
+
+.dashtopanelMainPanel.vertical .mm-workspace-indicator .workspace {
+	width: 44px;
+	height: 28px;
+	min-height: 28px;
+	border-color: rgba(255, 255, 255, 0.5);
+	background-color: #505050;
+}
+
+.dashtopanelMainPanel.vertical .mm-workspace-indicator .workspace.active {
+	border: 2px solid #ffffff;
+	background-color: #707070;
+}
+
+.dashtopanelMainPanel.vertical .mm-quick-settings-box {
+	padding: 0;
+}
+
+.mm-quick-settings {
+	padding: 0 8px;
+	-natural-hpadding: 8px;
+	-minimum-hpadding: 8px;
+}
+
+.mm-quick-settings-box {
+	padding: 0 6px;
+	margin: 0;
+}
+
+.mm-favorites-menu {
+	padding: 0 4px;
+	-natural-hpadding: 4px;
+	-minimum-hpadding: 4px;
+}
+
+.mm-favorites-menu-box {
+	padding: 0;
+	margin: 0;
+}
+
+.mm-clipboard-indicator-copy {
+	min-width: 0;
+	padding: 0 4px;
+}
+
+/* Fallback for locally rendered Workspace Indicator previews; matches the
+   extension's classes so its own stylesheet still wins when loaded. */
+.mm-workspace-indicator.previews:active {
+	background-color: transparent !important;
+	box-shadow: none !important;
+}
+
+.mm-workspace-indicator {
+	min-height: 30px;
+}
+
+.mm-workspace-indicator .workspaces-box {
+	spacing: 3px;
+	min-height: 30px;
+}
+
+.mm-workspace-indicator .workspace-box {
+	padding-top: 5px;
+	padding-bottom: 5px;
+	min-height: 30px;
+}
+
+.mm-workspace-indicator .workspace {
+	width: 52px;
+	min-height: 18px;
+	height: 18px;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background-color: #3f3f3f;
+}
+
+.mm-workspace-indicator .workspace.active {
+	border-color: #fff;
+}
