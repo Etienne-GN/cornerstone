@@ -836,3 +836,25 @@ test('a C-side destroy runs cleanup once', () => {
     delete fakes.Main.panel.statusArea['omni-cside']
   }
 })
+
+test('controller stops syncing once the shell panel or a box is destroyed', () => {
+  for (const gone of [shellPanel, shellPanel._rightBox]) {
+    const controller = new MirrorController(settingsFake)
+    const synced = []
+    controller._syncPanel = (panel) => synced.push(panel)
+    controller._panels = [{}]
+    controller.refresh()
+    assert.ok(controller._timeoutsHandler.labels.has('refresh'))
+
+    const disconnectObject = gone.disconnectObject
+    gone.emit('destroy')
+    gone.disconnectObject = () => assert.fail('disconnect a destroyed actor')
+    assert.equal(controller._timeoutsHandler.labels.size, 0, 'refresh dropped')
+    controller.refresh()
+    assert.equal(controller._timeoutsHandler.labels.size, 0, 'no new refresh')
+    controller._refreshNow()
+    assert.deepEqual(synced, [], 'no sync after destroy')
+    controller.destroy()
+    gone.disconnectObject = disconnectObject
+  }
+})

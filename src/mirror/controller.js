@@ -46,6 +46,8 @@ export class MirrorController {
     this._panelManager = null
     this._states = new Map()
     this._watched = new Set()
+    this._shellPanelAlive = true
+    this._mainPanelGone = false
     this._signalsHandler = new Utils.GlobalSignalsHandler()
     this._timeoutsHandler = new Utils.TimeoutsHandler()
 
@@ -58,7 +60,21 @@ export class MirrorController {
       [Main.extensionManager, 'extension-state-changed', () => this.refresh()],
     )
 
-    for (const box of BOX_NAMES) this._watch(Main.panel[BOX_ACTORS[box]])
+    // At shell shutdown Main.panel goes away under live mirrors; syncing
+    // after that only touches disposed actors.
+    Main.panel.connectObject(
+      'destroy',
+      () => {
+        this._mainPanelGone = true
+        this._onShellPanelGone()
+      },
+      this,
+    )
+    for (const box of BOX_NAMES) {
+      const actor = Main.panel[BOX_ACTORS[box]]
+      this._watch(actor)
+      actor?.connectObject('destroy', () => this._onShellPanelGone(), this)
+    }
   }
 
   // Called on every dash-to-panel `panels-created`.
@@ -86,6 +102,8 @@ export class MirrorController {
 
   refresh() {
     this._timeoutsHandler.removeWithLabel(REFRESH)
+    if (!this._shellPanelAlive) return
+
     this._timeoutsHandler.addWithLabel(REFRESH, [
       REFRESH,
       REFRESH_DELAY_MS,
@@ -100,6 +118,12 @@ export class MirrorController {
     clearCatalog(this._settings)
     for (const actor of this._watched) actor.disconnectObject(this)
     this._watched.clear()
+    if (!this._mainPanelGone) Main.panel.disconnectObject(this)
+  }
+
+  _onShellPanelGone() {
+    this._shellPanelAlive = false
+    this._timeoutsHandler.removeWithLabel(REFRESH)
   }
 
   // Extensions may populate a wrapper or reveal a hidden indicator without
@@ -147,6 +171,8 @@ export class MirrorController {
   }
 
   _refreshNow() {
+    if (!this._shellPanelAlive) return
+
     try {
       publishCatalog(this._settings, this._panelManager)
     } catch (e) {
