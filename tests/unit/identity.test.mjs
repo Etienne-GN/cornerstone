@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
 } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -66,9 +67,18 @@ function grepLiterals(root, pattern) {
 
 after(() => {
   for (const wt of worktrees) {
-    git(repo, 'worktree', 'remove', '--force', wt)
+    try {
+      git(repo, 'worktree', 'remove', '--force', wt)
+    } catch {
+      // worktree add may have failed; the directory is removed below
+    }
+    rmSync(wt, { recursive: true, force: true })
   }
-  git(repo, 'worktree', 'prune')
+  try {
+    git(repo, 'worktree', 'prune')
+  } catch {
+    // nothing to prune
+  }
 })
 
 test('metadata declares the Omnibar identity', () => {

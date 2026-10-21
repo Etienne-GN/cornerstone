@@ -30,6 +30,7 @@ import Gtk from 'gi://Gtk'
 import Gdk from 'gi://Gdk'
 
 import * as PanelSettings from './panelSettings.js'
+import { releaseUrl } from './releaseLinks.js'
 import * as Pos from './panelPositions.js'
 
 import {
@@ -3846,9 +3847,9 @@ const Preferences = class {
       this._metadata.version.toString() +
         (this._metadata.commit ? ' (' + this._metadata.commit + ')' : ''),
     )
-    versionLinkButton.set_uri(
-      `${this._metadata.url}/${this._metadata.commit ? `commit/${this._metadata.commit}` : `releases/tag/v${this._metadata.version}`}`,
-    )
+    const versionUrl = releaseUrl(this._metadata)
+    if (versionUrl) versionLinkButton.set_uri(versionUrl)
+    else versionLinkButton.set_sensitive(false)
 
     this._builder
       .get_object('importexport_export_button')

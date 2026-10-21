@@ -33,6 +33,7 @@ import * as PanelSettings from './panelSettings.js'
 import * as PanelManager from './panelManager.js'
 import * as AppIcons from './appIcons.js'
 import * as Utils from './utils.js'
+import { releaseUrl } from './releaseLinks.js'
 
 const UBUNTU_DOCK_UUID = 'ubuntu-dock@ubuntu.com'
 
@@ -88,6 +89,11 @@ export default class DashToPanelExtension extends Extension {
 
     // if new version, display a notification linking to release notes
     if (this.metadata.version != SETTINGS.get_int('extension-version')) {
+      const notesUrl = releaseUrl({
+        url: this.metadata.url,
+        version: this.metadata.version,
+      })
+
       Utils.notify(
         _('%s has been updated!').format(this.metadata.name),
         _('You are now running version') + ` ${this.metadata.version}.`,
@@ -95,14 +101,16 @@ export default class DashToPanelExtension extends Extension {
         Gio.icon_new_for_string(
           `${this.path}/img/dash-to-panel-logo-light.svg`,
         ),
-        {
-          text: _(`See what's new`),
-          func: () =>
-            Gio.app_info_launch_default_for_uri(
-              `${this.metadata.url}/releases/tag/v${this.metadata.version}`,
-              global.create_app_launch_context(0, -1),
-            ),
-        },
+        notesUrl
+          ? {
+              text: _(`See what's new`),
+              func: () =>
+                Gio.app_info_launch_default_for_uri(
+                  notesUrl,
+                  global.create_app_launch_context(0, -1),
+                ),
+            }
+          : null,
       )
 
       SETTINGS.set_int('extension-version', this.metadata.version)

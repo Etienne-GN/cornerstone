@@ -5,6 +5,9 @@ UUID := $(call metadata,uuid)
 SCHEMA := $(call metadata,settings-schema)
 DOMAIN := $(call metadata,gettext-domain)
 NAME := $(call metadata,name)
+$(if $(UUID),,$(error cannot read uuid from metadata.json))
+$(if $(SCHEMA),,$(error cannot read settings-schema from metadata.json))
+$(if $(DOMAIN),,$(error cannot read gettext-domain from metadata.json))
 MODULES = src/*.js src/stylesheet.css metadata.json COPYING README.md
 UI_MODULES = ui/*.ui
 IMAGES = ./* ../media/design/svg/dash-to-panel-logo-light.svg
