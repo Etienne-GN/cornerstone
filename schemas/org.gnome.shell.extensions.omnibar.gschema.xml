@@ -1407,5 +1407,20 @@
       <default>65</default>
       <summary>Installed extension version</summary>
     </key>
+    <key type="b" name="mirror-indicators">
+      <default>true</default>
+      <summary>Mirror status indicators</summary>
+      <description>Mirror top bar status indicators on the other monitors.</description>
+    </key>
+    <key type="s" name="mirror-indicator-visibility">
+      <default>'{}'</default>
+      <summary>Mirrored indicator visibility</summary>
+      <description>Per-monitor visibility of mirrored indicators (JSON).</description>
+    </key>
+    <key type="s" name="mirror-indicator-catalog">
+      <default>'{}'</default>
+      <summary>Mirrored indicator catalog</summary>
+      <description>Indicators known to the mirror, per monitor (JSON).</description>
+    </key>
   </schema>
 </schemalist>
