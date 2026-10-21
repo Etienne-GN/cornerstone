@@ -1,6 +1,7 @@
 {
   "type": "module",
   "scripts": {
+    "test": "node --test 'tests/unit/**/*.test.mjs'",
     "lint": "prettier 'src/**/*.js' --write && eslint 'src/**/*.js' --fix"
   },
   "devDependencies": {
