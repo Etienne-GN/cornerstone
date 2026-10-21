@@ -143,6 +143,7 @@ class Icon extends Actor {}
 class BoxLayout extends Actor {}
 class Clone extends Actor {}
 
+const registered = []
 const removedSources = []
 const timeouts = new Map()
 let nextTimeout = 100
@@ -173,7 +174,10 @@ const fakes = {
     BUTTON_SECONDARY: 3,
   },
   GObject: {
-    registerClass: (...args) => args.at(-1),
+    registerClass(...args) {
+      registered.push([args.length > 1 ? args[0] : {}, args.at(-1).name])
+      return args.at(-1)
+    },
     signal_lookup: () => 1,
     BindingFlags: { SYNC_CREATE: 1 },
   },
@@ -533,4 +537,17 @@ test('mirrored menus open and close animated through compat', () => {
 
   const source = readFileSync(path, 'utf8')
   assert.doesNotMatch(source, /\.(open|close)\(\)/)
+})
+
+test('GType names are namespaced to avoid clashing with MMB', () => {
+  assert.deepEqual(JSON.parse(JSON.stringify(registered)), [
+    [
+      { GTypeName: 'OmnibarWorkspacePreviewLayout' },
+      'MMWorkspacePreviewLayout',
+    ],
+    [
+      { GTypeName: 'OmnibarMirroredIndicatorButton' },
+      'MirroredIndicatorButton',
+    ],
+  ])
 })

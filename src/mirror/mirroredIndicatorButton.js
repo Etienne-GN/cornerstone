@@ -37,6 +37,7 @@ function workspaceNameClass(vertical) {
 }
 
 const MMWorkspacePreviewLayout = GObject.registerClass(
+  { GTypeName: 'OmnibarWorkspacePreviewLayout' },
   class MMWorkspacePreviewLayout extends Clutter.LayoutManager {
     vfunc_get_preferred_width() {
       return [0, 0]
@@ -124,6 +125,7 @@ const MMWorkspacePreviewLayout = GObject.registerClass(
 // Lightweight mirrored indicator that visually clones an existing indicator
 // (e.g., Vitals) from the main panel and opens its menu anchored to this button.
 export const MirroredIndicatorButton = GObject.registerClass(
+  { GTypeName: 'OmnibarMirroredIndicatorButton' },
   class MirroredIndicatorButton extends PanelMenu.Button {
     _init(host, role) {
       // dontCreateMenu=true: on GNOME 50 PanelMenu.Button installs a
