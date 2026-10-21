@@ -159,3 +159,27 @@ test('disable before any component exists does not throw', () => {
   assert.doesNotThrow(() => extension.disable())
   assert.deepEqual(logged, [])
 })
+
+test('a disable during the awaited init stops enable from building', async () => {
+  reset()
+  const extension = new DashToPanelExtension({ version: 1 })
+  const first = extension.enable()
+  extension.disable()
+  const second = extension.enable()
+  pendingInits.shift()()
+  await first
+  const built = ['mirror controller', 'action center', 'panel manager enable']
+  assert.deepEqual(
+    calls.filter((c) => built.includes(c)),
+    [],
+    'the superseded enable built nothing',
+  )
+  pendingInits.shift()()
+  await second
+  assert.deepEqual(
+    calls.filter((c) => built.includes(c)),
+    built,
+    'the current enable builds once',
+  )
+  extension.disable()
+})

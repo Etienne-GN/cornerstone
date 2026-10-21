@@ -67,12 +67,15 @@ export default class DashToPanelExtension extends Extension {
     super(metadata)
 
     this._realHasOverview = Main.sessionMode.hasOverview
+    this._enableGeneration = 0
 
     //create an object that persists until gnome-shell is restarted, even if the extension is disabled
     PERSISTENTSTORAGE = {}
   }
 
   async enable() {
+    // disable() can run while enable() awaits; a stale enable must stop.
+    const generation = ++this._enableGeneration
     DTP_EXTENSION = this
     SETTINGS = this.getSettings()
     DESKTOPSETTINGS = new Gio.Settings({
@@ -95,6 +98,7 @@ export default class DashToPanelExtension extends Extension {
     SETTINGS.set_boolean('prefs-opened', false)
 
     await PanelSettings.init(SETTINGS)
+    if (generation !== this._enableGeneration) return
 
     // To remove later, try to map settings using monitor indexes to monitor ids
     PanelSettings.adjustMonitorSettings(SETTINGS)
@@ -202,7 +206,9 @@ export default class DashToPanelExtension extends Extension {
   }
 
   disable() {
+    this._enableGeneration++
     if (ubuntuDockDelayId) GLib.Source.remove(ubuntuDockDelayId)
+    ubuntuDockDelayId = 0
 
     // Each teardown step runs even when an earlier one throws.
     isolated('action center', () => this._actionCenter?.destroy())
