@@ -26,12 +26,12 @@ root (gitignored). `install --force` unpacks it into
 `~/.local/share/gnome-shell/extensions/omnibar@etienne-gn.github.io/`.
 
 Optional: import the Dash to Panel settings. Omnibar's keys are a superset of
-Dash to Panel's (same names, plus `mirror-indicators`,
+Dash to Panel's (same key names, plus `mirror-indicators`,
 `mirror-indicator-visibility`, `mirror-indicator-catalog`). Run this before
 enabling Omnibar, only if you want it:
 
 ```
-dconf dump /org/gnome/shell/extensions/omnibar/ > omnibar-backup.ini
+dconf dump /org/gnome/shell/extensions/omnibar/ > ~/omnibar-backup.ini
 dconf dump /org/gnome/shell/extensions/dash-to-panel/ | dconf load /org/gnome/shell/extensions/omnibar/
 ```
 
@@ -39,10 +39,10 @@ Undo the import (back to schema defaults), or restore the backup:
 
 ```
 dconf reset -f /org/gnome/shell/extensions/omnibar/
-dconf load /org/gnome/shell/extensions/omnibar/ < omnibar-backup.ini
+dconf load /org/gnome/shell/extensions/omnibar/ < ~/omnibar-backup.ini
 ```
 
-Run the backup command in a directory you control (not `/tmp`). The reset
+The reset
 alone returns Omnibar to schema defaults; the `load` restores the backup. The
 Dash to Panel settings under `/org/gnome/shell/extensions/dash-to-panel/` are
 only read, never modified.
@@ -80,4 +80,22 @@ with `gnome-extensions uninstall omnibar@etienne-gn.github.io` and, if the
 settings are no longer wanted, `dconf reset -f /org/gnome/shell/extensions/omnibar/`.
 
 If the shell does not come up cleanly, switch to a TTY and run the same
-three `gnome-extensions` commands.
+three `gnome-extensions` commands. From a bare TTY they may fail, because
+`gnome-extensions` needs the session D-Bus.
+
+Last resort, pure settings edit (also needs the user's dconf, so it may fail
+the same way; otherwise run it from a working terminal). Inspect first:
+
+```
+gsettings get org.gnome.shell enabled-extensions
+```
+
+Then set the list again with only the Omnibar uuid removed, keeping every
+other entry exactly as printed, for example:
+
+```
+gsettings set org.gnome.shell enabled-extensions "['dash-to-panel@jderose9.github.com', 'multi-monitors-bar@frederykabryan']"
+```
+
+Replace the example list with the printed one minus
+`omnibar@etienne-gn.github.io`.

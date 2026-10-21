@@ -11,7 +11,7 @@ Omnibar.
 Note the start time, so the journal check ignores earlier boots' noise:
 
 ```
-date '+%F %T' | tee ~/omnibar-start.txt
+date '+%F %T' | tee ~/git/omnibar/.nested/omnibar-start.txt
 ```
 
 ## 1. Baseline
@@ -51,8 +51,10 @@ Open page "Multi-monitor & Action Center":
 
 ## 4. Vertical secondary bar
 
-In Omnibar settings, set the secondary monitor's panel position to left or
-right. Check that mirrors render correctly (orientation, size, spacing, no
+In Omnibar settings, page "Position", group "Order and Position on
+monitors": untick "Apply changes to all monitors", pick the secondary monitor
+in the monitor drop-down, then under "Panel monitor position" choose Left or
+Right (per-monitor, checked in `ui/SettingsPosition.ui` and `src/prefs.js`). Check that mirrors render correctly (orientation, size, spacing, no
 clipping), menus still open on that monitor, and toggling still works. Put
 the position back afterwards.
 
@@ -76,7 +78,7 @@ unlock. Repeat 3 times:
 The shell log goes to the user journal on a systemd-managed session:
 
 ```
-journalctl --user -b --since "$(cat ~/omnibar-start.txt)" | grep -E 'JS ERROR|\[omnibar\]|already disposed'
+journalctl --user -b --since "$(cat ~/git/omnibar/.nested/omnibar-start.txt)" | grep -E 'JS ERROR|\[omnibar\]|already disposed'
 ```
 
 Expected output: empty. If the user journal holds nothing from gnome-shell
@@ -84,7 +86,7 @@ Expected output: empty. If the user journal holds nothing from gnome-shell
 system journal, which needs membership of `systemd-journal`, `wheel` or `adm`:
 
 ```
-journalctl -b _COMM=gnome-shell --since "$(cat ~/omnibar-start.txt)" | grep -E 'JS ERROR|\[omnibar\]|already disposed'
+journalctl -b _COMM=gnome-shell --since "$(cat ~/git/omnibar/.nested/omnibar-start.txt)" | grep -E 'JS ERROR|\[omnibar\]|already disposed'
 ```
 
 Any hit is a failure. Keep the matching lines and the time of the action that
