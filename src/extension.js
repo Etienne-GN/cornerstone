@@ -31,6 +31,7 @@ import {
 import * as PanelSettings from './panelSettings.js'
 
 import * as PanelManager from './panelManager.js'
+import { MirrorController } from './mirror/controller.js'
 import * as AppIcons from './appIcons.js'
 import * as Utils from './utils.js'
 import { releaseUrl } from './releaseLinks.js'
@@ -140,6 +141,8 @@ export default class DashToPanelExtension extends Extension {
 
     this.enableGlobalStyles()
 
+    this._mirrorController = new MirrorController(SETTINGS)
+
     let completeEnable = () => {
       panelManager = new PanelManager.PanelManager()
       panelManager.enable()
@@ -166,11 +169,17 @@ export default class DashToPanelExtension extends Extension {
     } else completeEnable()
   }
 
+  get mirrorController() {
+    return this._mirrorController ?? null
+  }
+
   disable() {
     if (ubuntuDockDelayId) GLib.Source.remove(ubuntuDockDelayId)
 
     PanelSettings.disable(SETTINGS)
     panelManager.disable()
+    this._mirrorController.destroy()
+    this._mirrorController = null
     PanelSettings.clearCache()
 
     DTP_EXTENSION = null

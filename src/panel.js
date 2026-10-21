@@ -905,9 +905,11 @@ export const Panel = GObject.registerClass(
       setMap(Pos.TASKBAR, this.taskbar.actor)
       setMap(Pos.CENTER_BOX, this._centerBox)
       setMap(Pos.DATE_MENU, this.statusArea.dateMenu.container)
+      // Set by the mirror controller on secondary panels while mirroring.
       setMap(
         Pos.SYSTEM_MENU,
-        this.statusArea[Utils.getSystemMenuInfo().name].container,
+        this._omniSystemMenu ??
+          this.statusArea[Utils.getSystemMenuInfo().name].container,
       )
       setMap(Pos.RIGHT_BOX, this._rightBox)
       setMap(Pos.DESKTOP_BTN, this._showDesktopButton)

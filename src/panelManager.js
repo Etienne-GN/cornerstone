@@ -109,6 +109,7 @@ export const PanelManager = class {
 
     global.dashToPanel.panels = this.allPanels
     global.dashToPanel.emit('panels-created')
+    DTP_EXTENSION.mirrorController?.attach(this.allPanels)
 
     this._setDesktopIconsMargins()
 
@@ -317,6 +318,7 @@ export const PanelManager = class {
   }
 
   disable(reset) {
+    DTP_EXTENSION.mirrorController?.detach()
     this.primaryPanel && this.overview.disable()
     this.proximityManager.destroy()
 

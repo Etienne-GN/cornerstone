@@ -98,6 +98,8 @@ _build: all
 	-rm -fR ./_build
 	mkdir -p _build
 	cp $(MODULES) _build
+	mkdir -p _build/mirror
+	cp src/mirror/*.js _build/mirror
 	mkdir -p _build/ui
 	cp $(UI_MODULES) _build/ui
 
