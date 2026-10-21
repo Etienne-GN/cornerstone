@@ -515,3 +515,22 @@ test('dead MMB code is gone', () => {
   ])
     assert.doesNotMatch(source, pattern)
 })
+
+test('mirrored menus open and close animated through compat', () => {
+  menuCalls.length = 0
+  const menu = Object.assign(new Actor(), { isOpen: false, sourceActor: null })
+  const mirror = bare({
+    pseudoClasses: new Set(),
+    _sourceIndicator: Object.assign(new Actor(), { menu }),
+  })
+  mirror._openMirroredMenu()
+  assert.equal(menu.isOpen, true)
+  mirror._openMirroredMenu()
+  assert.deepEqual(menuCalls, [
+    ['open', undefined],
+    ['close', undefined],
+  ])
+
+  const source = readFileSync(path, 'utf8')
+  assert.doesNotMatch(source, /\.(open|close)\(\)/)
+})

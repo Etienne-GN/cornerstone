@@ -1222,7 +1222,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         openStateId = menu.connect('open-state-changed', (_m, isOpen) => {
           if (!isOpen) restoreAfterClose()
         })
-        menu.close()
+        menuClose(menu)
         return true
       }
 
@@ -1260,7 +1260,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         }
       })
 
-      menu.open()
+      menuOpen(menu)
 
       if (!menu.isOpen) restoreAfterClose()
 
@@ -2097,7 +2097,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         openStateId = menu.connect('open-state-changed', (_m, isOpen) => {
           if (!isOpen) restoreAfterClose()
         })
-        menu.close()
+        menuClose(menu)
         return Clutter.EVENT_STOP
       }
 
@@ -2118,7 +2118,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         restoreAfterClose()
       })
 
-      menu.open()
+      menuOpen(menu)
 
       if (!menu.isOpen) restoreAfterClose()
 
@@ -2366,7 +2366,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         let menuBoxState = null
 
         if (arcMenu.isOpen) {
-          arcMenu.close()
+          menuClose(arcMenu)
           return Clutter.EVENT_STOP
         }
 
@@ -2482,7 +2482,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       }
 
       if (menu.isOpen) {
-        menu.close()
+        menuClose(menu)
         return Clutter.EVENT_STOP
       }
 
@@ -2595,7 +2595,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
       // Close the menu if it's already open
       if (popupMenu.isOpen) {
-        popupMenu.close()
+        menuClose(popupMenu)
         return Clutter.EVENT_STOP
       }
 
@@ -2627,7 +2627,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         },
       )
 
-      popupMenu.open()
+      menuOpen(popupMenu)
 
       return Clutter.EVENT_STOP
     }
@@ -2730,7 +2730,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
             if (!isOpen) restoreAfterClose()
           })
         }
-        menu.close()
+        menuClose(menu)
         return Clutter.EVENT_STOP
       }
 
@@ -2750,7 +2750,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         restoreAfterClose()
       })
 
-      menu.open()
+      menuOpen(menu)
 
       if (!menu.isOpen) restoreAfterClose()
 
@@ -2847,7 +2847,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         openStateId = menu.connect('open-state-changed', (_m, isOpen) => {
           if (!isOpen) restoreAfterClose()
         })
-        menu.close()
+        menuClose(menu)
         return Clutter.EVENT_STOP
       }
 
@@ -2877,7 +2877,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         }
       })
 
-      menu.open()
+      menuOpen(menu)
 
       if (!menu.isOpen) restoreAfterClose()
 
