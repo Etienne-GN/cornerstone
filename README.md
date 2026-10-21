@@ -1,3 +1,7 @@
+# Omnibar
+
+Omnibar is a fork of [Dash to Panel](https://github.com/home-sweet-gnome/dash-to-panel) for GNOME Shell 50 and 51. The name is temporary: see [`docs/RENAMING.md`](docs/RENAMING.md). The text below is the upstream README.
+
 <p align="left">
   <img src="/media/design/svg/D2P_logo.svg" width="620"/>
 </p>

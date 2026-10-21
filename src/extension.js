@@ -61,7 +61,7 @@ export default class DashToPanelExtension extends Extension {
 
   async enable() {
     DTP_EXTENSION = this
-    SETTINGS = this.getSettings('org.gnome.shell.extensions.dash-to-panel')
+    SETTINGS = this.getSettings()
     DESKTOPSETTINGS = new Gio.Settings({
       schema_id: 'org.gnome.desktop.interface',
     })
@@ -89,7 +89,7 @@ export default class DashToPanelExtension extends Extension {
     // if new version, display a notification linking to release notes
     if (this.metadata.version != SETTINGS.get_int('extension-version')) {
       Utils.notify(
-        _('Dash to Panel has been updated!'),
+        _('%s has been updated!').format(this.metadata.name),
         _('You are now running version') + ` ${this.metadata.version}.`,
         'software-update-available-symbolic',
         Gio.icon_new_for_string(
@@ -189,7 +189,7 @@ export default class DashToPanelExtension extends Extension {
     if (SETTINGS.get_boolean('prefs-opened')) {
       let prefsWindow = Utils.getAllMetaWindows().find(
         (w) =>
-          w.title == 'Dash to Panel' &&
+          w.title == this.metadata.name &&
           w.wm_class == 'org.gnome.Shell.Extensions',
       )
 

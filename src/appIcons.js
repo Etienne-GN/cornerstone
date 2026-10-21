@@ -2334,7 +2334,9 @@ export const MyShowAppsIconMenu = class extends PopupMenu.PopupMenu {
       cmd: ['gnome-control-center'],
     })
 
-    let settingsMenuItem = this._appendMenuItem(_('Dash to Panel Settings'))
+    let settingsMenuItem = this._appendMenuItem(
+      _('%s Settings').format(DTP_EXTENSION.metadata.name),
+    )
     settingsMenuItem.connect('activate', () => DTP_EXTENSION.openPreferences())
 
     if (this.sourceActor == Main.layoutManager.dummyCursor) {

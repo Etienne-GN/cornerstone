@@ -1,9 +1,9 @@
 .~
 *~
 gschemas.compiled
-dash-to-panel@jderose9.github.com*.zip
+omnibar@etienne-gn.github.io*.zip
 *.mo
-po/dash-to-panel.pot
+po/omnibar.pot
 ui/*.ui.h
 node_modules/
 .nested/

@@ -1,6 +1,10 @@
 # Basic Makefile
 
-UUID = dash-to-panel@jderose9.github.com
+metadata = $(shell python3 -c 'import json,sys; print(json.load(open("metadata.json"))[sys.argv[1]])' $(1))
+UUID := $(call metadata,uuid)
+SCHEMA := $(call metadata,settings-schema)
+DOMAIN := $(call metadata,gettext-domain)
+NAME := $(call metadata,name)
 MODULES = src/*.js src/stylesheet.css metadata.json COPYING README.md
 UI_MODULES = ui/*.ui
 IMAGES = ./* ../media/design/svg/dash-to-panel-logo-light.svg
@@ -15,7 +19,7 @@ else
 	INSTALLBASE = $(DESTDIR)/usr/share/gnome-shell/extensions
 	SHARE_PREFIX = $(DESTDIR)/usr/share
 endif
-INSTALLNAME = dash-to-panel@jderose9.github.com
+INSTALLNAME = $(UUID)
 
 # The command line passed variable VERSION is used to set the version string
 # in the metadata and in the generated zip-file. If no VERSION is passed, the
@@ -41,27 +45,27 @@ clean:
 
 extension: ./schemas/gschemas.compiled $(MSGSRC:.po=.mo)
 
-./schemas/gschemas.compiled: ./schemas/org.gnome.shell.extensions.dash-to-panel.gschema.xml
+./schemas/gschemas.compiled: ./schemas/$(SCHEMA).gschema.xml
 	glib-compile-schemas ./schemas/
 
-potfile: ./po/dash-to-panel.pot
+potfile: ./po/$(DOMAIN).pot
 
 mergepo: potfile
 	for l in $(MSGSRC); do \
-		msgmerge -U $$l ./po/dash-to-panel.pot; \
+		msgmerge -U $$l ./po/$(DOMAIN).pot; \
 	done;
 
-./po/dash-to-panel.pot: $(TOLOCALIZE)
+./po/$(DOMAIN).pot: $(TOLOCALIZE)
 	mkdir -p po
-	xgettext -k_ -kN_ -o po/dash-to-panel.pot --package-name "Dash To Panel" $(TOLOCALIZE) --from-code=UTF-8
+	xgettext -k_ -kN_ -o po/$(DOMAIN).pot --package-name "$(NAME)" $(TOLOCALIZE) --from-code=UTF-8
 
 	for l in $(UI_MODULES) ; do \
 		intltool-extract --type=gettext/glade $$l; \
-		xgettext -k_ -kN_ -o po/dash-to-panel.pot $$l.h --join-existing --from-code=UTF-8; \
+		xgettext -k_ -kN_ -o po/$(DOMAIN).pot $$l.h --join-existing --from-code=UTF-8; \
 		rm -rf $$l.h; \
 	done;
 
-	sed -i -e 's/&\#10;/\\n/g' po/dash-to-panel.pot
+	sed -i -e 's/&\#10;/\\n/g' po/$(DOMAIN).pot
 
 ./po/%.mo: ./po/%.po
 	msgfmt -c $< -o $@
@@ -104,7 +108,7 @@ _build: all
 		lf=_build/locale/`basename $$l .mo`; \
 		mkdir -p $$lf; \
 		mkdir -p $$lf/LC_MESSAGES; \
-		cp $$l $$lf/LC_MESSAGES/dash-to-panel.mo; \
+		cp $$l $$lf/LC_MESSAGES/$(DOMAIN).mo; \
 	done;
 ifneq ($(and $(COMMIT),$(VERSION)),)
 	sed -i 's/"version": [[:digit:]][[:digit:]]*/"version": $(VERSION),\n"commit": "$(COMMIT)"/'  _build/metadata.json;

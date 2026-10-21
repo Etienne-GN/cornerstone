@@ -47,8 +47,6 @@ const DEFAULT_PADDING_SIZES = [32, 24, 16, 12, 8, 4, 0, -1]
 const LENGTH_MARKS = [100, 90, 80, 70, 60, 50, 40, 30, 20]
 const MAX_WINDOW_INDICATOR = 4
 
-const SCHEMA_PATH = '/org/gnome/shell/extensions/dash-to-panel/'
-
 /**
  * This function was copied from the activities-config extension
  * https://github.com/nls1729/acme-code/tree/master/activities-config
@@ -148,7 +146,6 @@ function checkHotkeyPrefix(settings) {
 
 const Preferences = class {
   constructor(window, settings, path) {
-    // this._settings = ExtensionUtils.getSettings('org.gnome.shell.extensions.dash-to-panel');
     this._rtl = Gtk.Widget.get_default_direction() == Gtk.TextDirection.RTL
     this._builder = new Gtk.Builder()
     this._builder.set_scope(new BuilderScope(this))
@@ -157,6 +154,8 @@ const Preferences = class {
 
     this._metadata = ExtensionPreferences.lookupByURL(import.meta.url).metadata
     this._builder.set_translation_domain(this._metadata['gettext-domain'])
+    this._schemaPath =
+      '/' + this._metadata['settings-schema'].replaceAll('.', '/') + '/'
 
     window.set_search_enabled(true)
 
@@ -3865,7 +3864,7 @@ const Preferences = class {
             let out = Gio.BufferedOutputStream.new_sized(raw, 4096)
 
             out.write_all(
-              GLib.spawn_command_line_sync('dconf dump ' + SCHEMA_PATH)[1],
+              GLib.spawn_command_line_sync('dconf dump ' + this._schemaPath)[1],
               null,
             )
             out.close(null)
@@ -3886,7 +3885,7 @@ const Preferences = class {
               let settingsFile = Gio.File.new_for_path(filename)
               let [, , stdin, stdout, stderr] = GLib.spawn_async_with_pipes(
                 null,
-                ['dconf', 'load', SCHEMA_PATH],
+                ['dconf', 'load', this._schemaPath],
                 null,
                 GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
                 null,
@@ -4034,9 +4033,7 @@ export default class DashToPanelPreferences extends ExtensionPreferences {
   fillPreferencesWindow(window) {
     let closeRequestId = null
 
-    window._settings = this.getSettings(
-      'org.gnome.shell.extensions.dash-to-panel',
-    )
+    window._settings = this.getSettings()
 
     // use default width or window
     window.set_default_size(0, 740)
