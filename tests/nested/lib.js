@@ -87,8 +87,7 @@ const HOST_SYSTEM_SERVICES = [
   'org.freedesktop.NetworkManager',
 ]
 
-// Last call of every scenario: run.sh fails a run without this sentinel.
-export function done(scenario) {
+export function assertIsolated() {
   const [names] = Gio.DBus.system
     .call_sync(
       'org.freedesktop.DBus',
@@ -104,5 +103,10 @@ export function done(scenario) {
     .deepUnpack()
   const leaked = names.filter((n) => HOST_SYSTEM_SERVICES.includes(n))
   assert(!leaked.length, `host services on the system bus: ${leaked}`)
+}
+
+// Last call of every scenario: run.sh fails a run without this sentinel.
+export function done(scenario) {
+  assertIsolated()
   console.log(`[omnibar-test] DONE ${scenario}`)
 }
