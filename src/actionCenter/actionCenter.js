@@ -27,10 +27,9 @@ import St from 'gi://St'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js'
 import { POPUP_ANIMATION_TIME } from 'resource:///org/gnome/shell/ui/quickSettings.js'
-import { InjectionManager } from 'resource:///org/gnome/shell/extensions/extension.js'
 
 import { menuClose, menuOpen, verticalBoxProps } from '../compat.js'
-import { ActionCenterRouter } from './router.js'
+import { ActionCenterRouter, InstanceOverrides } from './router.js'
 import { WidgetMover } from './widgetMover.js'
 
 // quickSettings.js keeps this private.
@@ -170,7 +169,7 @@ export class ActionCenter {
     const menu = new ActionCenterMenu(qsMenu)
     this._menu = menu
     this._mover = new WidgetMover()
-    this._injections = new InjectionManager()
+    this._injections = new InstanceOverrides()
     Main.uiGroup.add_child(menu.actor)
     menu.actor.hide()
     this._manager = new PopupMenu.PopupMenuManager(menu.actor)
@@ -193,7 +192,7 @@ export class ActionCenter {
 
     this._bindOverlay()
 
-    this._injections.overrideMethod(
+    this._injections.override(
       qsMenu,
       '_setDimmed',
       () => (dim) => menu.setDimmed(dim),
@@ -225,16 +224,7 @@ export class ActionCenter {
     global.display.disconnectObject(this)
     this._step('message list capture', () => this._releaseMessageList())
     this._step('overlay constraints', () => this._unbindOverlay())
-    this._step('dim override', () => {
-      this._injections.clear()
-      // InjectionManager reinstalls the inherited method as an own property.
-      const proto = Object.getPrototypeOf(qsMenu)
-      if (
-        Object.hasOwn(qsMenu, '_setDimmed') &&
-        qsMenu._setDimmed === proto._setDimmed
-      )
-        delete qsMenu._setDimmed
-    })
+    this._step('dim override', () => this._injections.clear())
     this._step('widgets', () => this._mover.restoreAll())
 
     // Never let menu.destroy() take a GNOME widget with it.
