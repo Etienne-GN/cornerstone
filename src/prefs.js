@@ -33,6 +33,7 @@ import * as PanelSettings from './panelSettings.js'
 import { releaseUrl } from './releaseLinks.js'
 import * as Pos from './panelPositions.js'
 import { MirrorPreferences } from './mirror/prefs.js'
+import { ActionCenterPreferences } from './actionCenter/prefs.js'
 
 import {
   ExtensionPreferences,
@@ -805,6 +806,14 @@ const Preferences = class {
   }
 
   _bindSettings() {
+    const actionCenterPreferences = new ActionCenterPreferences(
+      this._builder,
+      this._settings,
+    )
+    this.notebook.connect('close-request', () =>
+      actionCenterPreferences.destroy(),
+    )
+
     // App icon style option
     this._builder
       .get_object('appicon_style_combo')

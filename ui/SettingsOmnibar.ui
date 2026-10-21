@@ -7,14 +7,34 @@
     <property name="icon-name">video-display-symbolic</property>
     <property name="title" translatable="yes">Multi-monitor &amp; Action Center</property>
     <child>
-      <object class="AdwPreferencesGroup" id="mirrorGroup">
-        <property name="title" translatable="yes">Mirrored indicators</property>
-        <property name="description" translatable="yes">Show the top bar status indicators on the other monitors.</property>
+      <object class="AdwPreferencesGroup" id="actionCenterGroup">
+        <property name="title" translatable="yes">Action Center</property>
+        <property name="description" translatable="yes">Quick settings, notifications and the calendar in one popup, opened from the clock or the system menu on any monitor.</property>
+        <child>
+          <object class="AdwSwitchRow" id="action_center_switch">
+            <property name="title" translatable="yes">Action Center</property>
+            <property name="subtitle" translatable="yes">Off brings back GNOME's own calendar and system menu.</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwComboRow" id="action_center_banner_click_combo">
+            <property name="title" translatable="yes">Notification banner click</property>
+            <property name="model">
+              <object class="GtkStringList">
+                <items>
+                  <item translatable="yes">Open the Action Center</item>
+                  <item translatable="yes">Activate the notification</item>
+                </items>
+              </object>
+            </property>
+          </object>
+        </child>
       </object>
     </child>
     <child>
-      <object class="AdwPreferencesGroup" id="actionCenterGroup">
-        <property name="visible">False</property>
+      <object class="AdwPreferencesGroup" id="mirrorGroup">
+        <property name="title" translatable="yes">Mirrored indicators</property>
+        <property name="description" translatable="yes">Show the top bar status indicators on the other monitors.</property>
       </object>
     </child>
   </object>

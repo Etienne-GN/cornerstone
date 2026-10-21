@@ -1,3 +1,4 @@
+import Gio from 'gi://Gio'
 import GLib from 'gi://GLib'
 import St from 'gi://St'
 
@@ -31,6 +32,39 @@ function mirrored(panel) {
 
 function readCatalog(settings) {
   return JSON.parse(settings.get_string('mirror-indicator-catalog'))
+}
+
+// GTK may only reach the nested compositor: its socket in the private
+// runtime dir, never a display inherited from the host.
+async function checkPreferencesUi() {
+  const runtime = GLib.getenv('XDG_RUNTIME_DIR') ?? ''
+  const display = 'omnibar-nested'
+  assert(runtime.includes('/.nested/'), `runtime dir ${runtime} not private`)
+  assert(
+    GLib.file_test(`${runtime}/${display}`, GLib.FileTest.EXISTS),
+    `no nested Wayland socket in ${runtime}`,
+  )
+
+  const launcher = new Gio.SubprocessLauncher({
+    flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_MERGE,
+  })
+  launcher.setenv('WAYLAND_DISPLAY', display, true)
+  launcher.setenv('GDK_BACKEND', 'wayland', true)
+  launcher.unsetenv('DISPLAY')
+  const here = GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0])
+  const script = GLib.build_filenamev([here, '..', 'prefs-ui.js'])
+  const proc = launcher.spawnv(['gjs', '-m', script])
+  const [out] = await new Promise((resolve, reject) =>
+    proc.communicate_utf8_async(null, null, (p, res) => {
+      try {
+        resolve(p.communicate_utf8_finish(res).slice(1))
+      } catch (e) {
+        reject(e)
+      }
+    }),
+  )
+  console.log(`[omnibar-test] prefs-ui: ${out.trim()}`)
+  assert(proc.get_successful(), `prefs-ui failed: ${out.trim()}`)
 }
 
 export async function run() {
@@ -104,6 +138,8 @@ export async function run() {
   await waitFor(
     () => !readCatalog(settings).roles?.some((r) => r.role === ROLE),
   )
+
+  await checkPreferencesUi()
 
   await disable()
   assert(
