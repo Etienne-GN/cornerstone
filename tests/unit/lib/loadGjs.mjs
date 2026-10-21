@@ -6,8 +6,9 @@ const IMPORT_RE =
 const EXPORT_DECL_RE =
   /^export\s+(?:default\s+)?((?:async\s+)?(?:const|let|var|function\*?|class)\s+)([A-Za-z_$][\w$]*)/gm
 
-// Evaluate a GJS ES module in a vm context. `fakes` become globals, imports
-// are stripped, and the namespace of exported declarations is returned.
+// Evaluate a GJS ES module in a vm context, strict like GJS modules. `fakes`
+// become globals, imports are stripped, and the namespace of exported
+// declarations is returned.
 export function loadGjs(path, fakes = {}) {
   const names = []
   const source = readFileSync(path, 'utf8')
@@ -18,7 +19,11 @@ export function loadGjs(path, fakes = {}) {
     })
 
   const context = vm.createContext({ ...fakes })
-  return vm.runInContext(`${source}\n;({${names.join(',')}})`, context, {
-    filename: path,
-  })
+  return vm.runInContext(
+    `'use strict';${source}\n;({${names.join(',')}})`,
+    context,
+    {
+      filename: path,
+    },
+  )
 }

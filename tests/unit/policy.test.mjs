@@ -90,3 +90,19 @@ test('source visibility prefers the primary override', () => {
   assert.equal(policy.sourceIsVisible(actor), true)
   assert.equal(policy.sourceIsVisible(null), false)
 })
+
+test('invalid JSON is logged once per distinct value', () => {
+  const errors = []
+  const logged = loadGjs(
+    fileURLToPath(new URL('../../src/mirror/policy.js', import.meta.url)),
+    { console: { error: (...args) => errors.push(args) } },
+  )
+  for (const value of ['bad', 'bad', 'worse', 'bad', '{}'])
+    logged.readVisibility(new Settings(value))
+  assert.equal(errors.length, 2)
+  assert.equal(
+    errors[0][0],
+    '[omnibar] mirror policy: invalid JSON in mirror-indicator-visibility',
+  )
+  assert.equal(typeof errors[0][1], 'string')
+})

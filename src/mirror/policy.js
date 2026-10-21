@@ -53,11 +53,21 @@ function isPlainObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value)
 }
 
+const reportedInvalid = new Set()
+
 export function readVisibility(settings) {
+  const raw = settings.get_string(VISIBILITY_KEY)
   try {
-    const value = JSON.parse(settings.get_string(VISIBILITY_KEY))
+    const value = JSON.parse(raw)
     return isPlainObject(value) ? value : {}
-  } catch {
+  } catch (e) {
+    if (!reportedInvalid.has(raw)) {
+      reportedInvalid.add(raw)
+      console.error(
+        `[omnibar] mirror policy: invalid JSON in ${VISIBILITY_KEY}`,
+        e.message,
+      )
+    }
     return {}
   }
 }
