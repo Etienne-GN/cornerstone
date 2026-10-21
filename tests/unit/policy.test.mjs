@@ -104,5 +104,5 @@ test('invalid JSON is logged once per distinct value', () => {
     errors[0][0],
     '[omnibar] mirror policy: invalid JSON in mirror-indicator-visibility',
   )
-  assert.equal(typeof errors[0][1], 'string')
+  assert.equal(errors[0][1]?.name, 'SyntaxError', 'the error itself is logged')
 })
