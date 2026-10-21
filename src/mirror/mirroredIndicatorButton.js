@@ -36,6 +36,36 @@ function workspaceNameClass(vertical) {
   return vertical ? 'mm-workspace-name' : 'status-label'
 }
 
+// Patch a property of an object we do not own. The returned function puts
+// back exactly what was there: an inherited method is deleted again rather
+// than restored as a bound own-property copy that would shadow it.
+function overrideProperty(object, name, value) {
+  const hadOwn = Object.hasOwn(object, name)
+  const previous = object[name]
+  object[name] = value
+  return () => {
+    if (hadOwn) object[name] = previous
+    else delete object[name]
+  }
+}
+
+// Openers anchor the menu's BoxPointer to the mirror before positioning
+// it, so its original source must be recorded first.
+function captureAnchorState(menu) {
+  return [menu.box, menu._boxPointer].filter(Boolean).map((actor) => ({
+    actor,
+    sourceActor: actor._sourceActor,
+    sourceAllocation: actor._sourceAllocation,
+  }))
+}
+
+function restoreAnchorState(anchorState) {
+  for (const state of anchorState) {
+    state.actor._sourceActor = state.sourceActor
+    state.actor._sourceAllocation = state.sourceAllocation
+  }
+}
+
 const MMWorkspacePreviewLayout = GObject.registerClass(
   { GTypeName: 'OmnibarWorkspacePreviewLayout' },
   class MMWorkspacePreviewLayout extends Clutter.LayoutManager {
@@ -1153,15 +1183,14 @@ export const MirroredIndicatorButton = GObject.registerClass(
         this._astraMenuPendingRestore = null
       }
 
-      let originalSourceActor = menu.sourceActor
-      let originalBoxPointer = menu.box?._sourceActor
-      let originalSetActive = targetChild.setActive?.bind(targetChild)
-      let originalAddPseudoClass =
-        targetChild.add_style_pseudo_class?.bind(targetChild)
-
+      const originalSourceActor = menu.sourceActor
+      const originalBoxPointer = menu.box?._sourceActor
+      const anchorState = captureAnchorState(menu)
+      let restoreMethods = null
       let menuBoxState = null
       let openStateId = 0
       let restored = false
+      let untrack = null
 
       const keepAnchoredToProxy = () => {
         menu.sourceActor = proxy
@@ -1177,12 +1206,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         menu.sourceActor = originalSourceActor
         if (menu.box) menu.box._sourceActor = originalBoxPointer
 
-        if (menuBoxState?.sourceActorState) {
-          for (const state of menuBoxState.sourceActorState) {
-            state.actor._sourceActor = state.sourceActor
-            state.actor._sourceAllocation = state.sourceAllocation
-          }
-        }
+        restoreAnchorState(anchorState)
 
         this._astraMenuRestoreId = 0
         this._astraMenuPendingRestore = null
@@ -1193,14 +1217,14 @@ export const MirroredIndicatorButton = GObject.registerClass(
         if (restored) return
         restored = true
 
+        untrack?.()
         if (openStateId) {
           menu.disconnect(openStateId)
           openStateId = 0
         }
 
-        if (originalSetActive) targetChild.setActive = originalSetActive
-        if (originalAddPseudoClass)
-          targetChild.add_style_pseudo_class = originalAddPseudoClass
+        restoreMethods?.()
+        restoreMethods = null
 
         targetChild.remove_style_pseudo_class('active')
         targetChild.remove_style_pseudo_class('checked')
@@ -1219,29 +1243,35 @@ export const MirroredIndicatorButton = GObject.registerClass(
         )
       }
 
+      const abort = () => {
+        restored = true
+        if (openStateId) {
+          menu.disconnect(openStateId)
+          openStateId = 0
+        }
+        if (menu.isOpen) menuClose(menu, { animate: false })
+        restoreMethods?.()
+        restoreMethods = null
+        this._restoreMenuBoxOverrides(menuBoxState)
+        restoreSourceActor()
+        for (const actor of [targetChild, proxy]) {
+          actor.remove_style_pseudo_class('active')
+          actor.remove_style_pseudo_class('checked')
+        }
+      }
+
       if (menu.isOpen) {
         keepAnchoredToProxy()
         openStateId = menu.connect('open-state-changed', (_m, isOpen) => {
           if (!isOpen) restoreAfterClose()
         })
+        untrack = this._trackMenuSession(abort)
         menuClose(menu)
         return true
       }
 
       // Prevent active state on main panel indicator
-      if (targetChild.setActive) {
-        targetChild.setActive = () => {}
-      }
-      if (targetChild.add_style_pseudo_class) {
-        const orig = targetChild.add_style_pseudo_class.bind(targetChild)
-        targetChild.add_style_pseudo_class = (p) => {
-          if (p !== 'active' && p !== 'checked') orig(p)
-        }
-      }
-      if (targetChild.remove_style_pseudo_class) {
-        targetChild.remove_style_pseudo_class('active')
-        targetChild.remove_style_pseudo_class('checked')
-      }
+      restoreMethods = this._preventMainPanelActiveState(targetChild)
 
       // Activate proxy
       proxy.add_style_pseudo_class('active')
@@ -1261,6 +1291,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
           restoreAfterClose()
         }
       })
+      untrack = this._trackMenuSession(abort)
 
       menuOpen(menu)
 
@@ -2011,16 +2042,12 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
       const originalSourceActor = menu.sourceActor
       const originalBoxPointer = menu.box?._sourceActor
-      const originalSetActive = this._sourceIndicator.setActive?.bind(
-        this._sourceIndicator,
-      )
-      const originalAddPseudoClass =
-        this._sourceIndicator.add_style_pseudo_class?.bind(
-          this._sourceIndicator,
-        )
+      const anchorState = captureAnchorState(menu)
+      let restoreMethods = null
       let menuBoxState = null
       let openStateId = 0
       let restored = false
+      let untrack = null
 
       const keepAnchoredToMirror = () => {
         menu.sourceActor = this
@@ -2032,30 +2059,11 @@ export const MirroredIndicatorButton = GObject.registerClass(
         }
       }
 
-      const restoreMenuBox = () => {
-        if (!menuBoxState?.menuBox) return
-
-        if (menuBoxState.originalSetPosition)
-          menuBoxState.menuBox.setPosition = menuBoxState.originalSetPosition
-        else delete menuBoxState.menuBox.setPosition
-
-        if (menuBoxState.removedConstraints?.length > 0) {
-          menuBoxState.removedConstraints.forEach((constraint) => {
-            menuBoxState.menuBox.add_constraint(constraint)
-          })
-        }
-      }
-
       const restoreSourceActor = () => {
         menu.sourceActor = originalSourceActor
         if (menu.box) menu.box._sourceActor = originalBoxPointer
 
-        if (menuBoxState?.sourceActorState) {
-          for (const state of menuBoxState.sourceActorState) {
-            state.actor._sourceActor = state.sourceActor
-            state.actor._sourceAllocation = state.sourceAllocation
-          }
-        }
+        restoreAnchorState(anchorState)
 
         this._clearSourceIndicatorActiveState()
         this._quickSettingsMenuRestoreId = 0
@@ -2067,17 +2075,16 @@ export const MirroredIndicatorButton = GObject.registerClass(
         if (restored) return
         restored = true
 
+        untrack?.()
         if (openStateId) {
           menu.disconnect(openStateId)
           openStateId = 0
         }
 
-        if (originalSetActive)
-          this._sourceIndicator.setActive = originalSetActive
-        if (originalAddPseudoClass)
-          this._sourceIndicator.add_style_pseudo_class = originalAddPseudoClass
+        restoreMethods?.()
+        restoreMethods = null
 
-        restoreMenuBox()
+        this._restoreMenuBoxOverrides(menuBoxState)
         this.remove_style_pseudo_class('active')
         this.remove_style_pseudo_class('checked')
         this._clearSourceIndicatorActiveState()
@@ -2094,16 +2101,33 @@ export const MirroredIndicatorButton = GObject.registerClass(
         )
       }
 
+      const abort = () => {
+        restored = true
+        if (openStateId) {
+          menu.disconnect(openStateId)
+          openStateId = 0
+        }
+        if (menu.isOpen) menuClose(menu, { animate: false })
+        restoreMethods?.()
+        restoreMethods = null
+        this._restoreMenuBoxOverrides(menuBoxState)
+        restoreSourceActor()
+        this.remove_style_pseudo_class('active')
+        this.remove_style_pseudo_class('checked')
+        this._clearSourceIndicatorActiveState()
+      }
+
       if (menu.isOpen) {
         keepAnchoredToMirror()
         openStateId = menu.connect('open-state-changed', (_m, isOpen) => {
           if (!isOpen) restoreAfterClose()
         })
+        untrack = this._trackMenuSession(abort)
         menuClose(menu)
         return Clutter.EVENT_STOP
       }
 
-      this._preventMainPanelActiveState()
+      restoreMethods = this._preventMainPanelActiveState()
       this.add_style_pseudo_class('active')
       keepAnchoredToMirror()
 
@@ -2119,6 +2143,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
         restoreAfterClose()
       })
+      untrack = this._trackMenuSession(abort)
 
       menuOpen(menu)
 
@@ -2358,13 +2383,6 @@ export const MirroredIndicatorButton = GObject.registerClass(
         const monitorIndex = Main.layoutManager.findIndexForActor(this)
         const originalSourceActor = arcMenu.sourceActor
         const originalBoxPointer = arcMenu.box?._sourceActor
-        const originalSetActive = this._sourceIndicator.setActive?.bind(
-          this._sourceIndicator,
-        )
-        const originalAddPseudoClass =
-          this._sourceIndicator.add_style_pseudo_class?.bind(
-            this._sourceIndicator,
-          )
         let menuBoxState = null
 
         if (arcMenu.isOpen) {
@@ -2373,7 +2391,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         }
 
         // Prevent active state on main panel indicator
-        this._preventMainPanelActiveState()
+        const restoreMethods = this._preventMainPanelActiveState()
 
         // Add active style to THIS button
         this.add_style_pseudo_class('active')
@@ -2385,42 +2403,39 @@ export const MirroredIndicatorButton = GObject.registerClass(
           menuBoxState = this._updateMenuPositioning(arcMenu, monitorIndex)
         }
 
-        // Connect to menu close to restore state
-        const openStateId = arcMenu.connect(
-          'open-state-changed',
-          (_m, isOpen) => {
-            if (isOpen) {
-              this.add_style_pseudo_class('active')
-              return
-            }
-
-            if (!isOpen) {
-              this._restoreMenuState(
-                arcMenu,
-                originalSourceActor,
-                originalBoxPointer,
-                originalSetActive,
-                originalAddPseudoClass,
-                menuBoxState,
-              )
-              arcMenu.disconnect(openStateId)
-            }
-          },
-        )
-
-        // Toggle the menu
-        if (toggleFunc) {
-          toggleFunc()
-        } else {
+        let openStateId = 0
+        let untrack = null
+        const finish = ({ close = false } = {}) => {
+          untrack?.()
+          untrack = null
+          if (openStateId) {
+            arcMenu.disconnect(openStateId)
+            openStateId = 0
+          }
+          if (close && arcMenu.isOpen) menuClose(arcMenu, { animate: false })
           this._restoreMenuState(
             arcMenu,
             originalSourceActor,
             originalBoxPointer,
-            originalSetActive,
-            originalAddPseudoClass,
+            restoreMethods,
             menuBoxState,
           )
         }
+
+        // Connect to menu close to restore state
+        openStateId = arcMenu.connect('open-state-changed', (_m, isOpen) => {
+          if (isOpen) {
+            this.add_style_pseudo_class('active')
+            return
+          }
+
+          finish()
+        })
+        untrack = this._trackMenuSession(() => finish({ close: true }))
+
+        // Toggle the menu
+        if (toggleFunc) toggleFunc()
+        else finish()
       } else {
         // Fallback: just toggle without repositioning
         this.add_style_pseudo_class('active')
@@ -2491,6 +2506,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       const originalSourceActor = menu.sourceActor
       const originalBoxPointer = menu.box?._sourceActor
       let openStateId = 0
+      let untrack = null
       const sourceActorState = []
 
       this.add_style_pseudo_class('active')
@@ -2523,6 +2539,8 @@ export const MirroredIndicatorButton = GObject.registerClass(
           return GLib.SOURCE_REMOVE
         }
 
+        untrack?.()
+        untrack = null
         this.remove_style_pseudo_class('active')
         this.remove_style_pseudo_class('checked')
 
@@ -2581,6 +2599,14 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
         restore(true)
       })
+      untrack = this._trackMenuSession(() => {
+        if (openStateId) {
+          menu.disconnect(openStateId)
+          openStateId = 0
+        }
+        if (menu.isOpen) menuClose(menu, { animate: false })
+        restore()
+      })
 
       if (typeof this._sourceIndicator._toggleMenu === 'function')
         this._sourceIndicator._toggleMenu()
@@ -2615,19 +2641,30 @@ export const MirroredIndicatorButton = GObject.registerClass(
         }
       }
 
+      let untrack = null
+      const finish = () => {
+        untrack?.()
+        untrack = null
+        popupMenu.disconnect(openStateId)
+        this.remove_style_pseudo_class('active')
+        popupMenu.sourceActor = originalSourceActor
+      }
+
       // Setup cleanup on menu close
       const openStateId = popupMenu.connect(
         'open-state-changed',
         (_m, isOpen) => {
-          if (isOpen) {
-            this.add_style_pseudo_class('active')
-          } else {
-            this.remove_style_pseudo_class('active')
-            popupMenu.sourceActor = originalSourceActor
-            popupMenu.disconnect(openStateId)
-          }
+          if (isOpen) this.add_style_pseudo_class('active')
+          else finish()
         },
       )
+      untrack = this._trackMenuSession(() => {
+        popupMenu.disconnect(openStateId)
+        untrack = null
+        if (popupMenu.isOpen) menuClose(popupMenu, { animate: false })
+        this.remove_style_pseudo_class('active')
+        popupMenu.sourceActor = originalSourceActor
+      })
 
       menuOpen(popupMenu)
 
@@ -2640,16 +2677,12 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
       const originalSourceActor = menu.sourceActor
       const originalBoxPointer = menu.box?._sourceActor
-      const originalSetActive = this._sourceIndicator.setActive?.bind(
-        this._sourceIndicator,
-      )
-      const originalAddPseudoClass =
-        this._sourceIndicator.add_style_pseudo_class?.bind(
-          this._sourceIndicator,
-        )
+      const anchorState = captureAnchorState(menu)
+      let restoreMethods = null
       let menuBoxState = null
       let openStateId = 0
       let restored = false
+      let untrack = null
 
       const keepAnchoredToMirror = () => {
         menu.sourceActor = this
@@ -2660,30 +2693,11 @@ export const MirroredIndicatorButton = GObject.registerClass(
         }
       }
 
-      const restoreMenuBox = () => {
-        if (!menuBoxState?.menuBox) return
-
-        if (menuBoxState.originalSetPosition)
-          menuBoxState.menuBox.setPosition = menuBoxState.originalSetPosition
-        else delete menuBoxState.menuBox.setPosition
-
-        if (menuBoxState.removedConstraints?.length > 0) {
-          menuBoxState.removedConstraints.forEach((constraint) => {
-            menuBoxState.menuBox.add_constraint(constraint)
-          })
-        }
-      }
-
       const restoreSourceActor = () => {
         if (originalSourceActor) menu.sourceActor = originalSourceActor
         if (menu.box && originalBoxPointer)
           menu.box._sourceActor = originalBoxPointer
-        if (menuBoxState?.sourceActorState) {
-          for (const state of menuBoxState.sourceActorState) {
-            state.actor._sourceActor = state.sourceActor
-            state.actor._sourceAllocation = state.sourceAllocation
-          }
-        }
+        restoreAnchorState(anchorState)
 
         this._clearSourceIndicatorActiveState()
         this._workspaceMenuRestoreId = 0
@@ -2695,17 +2709,16 @@ export const MirroredIndicatorButton = GObject.registerClass(
         if (restored) return
         restored = true
 
+        untrack?.()
         if (openStateId) {
           menu.disconnect(openStateId)
           openStateId = 0
         }
 
-        if (originalSetActive)
-          this._sourceIndicator.setActive = originalSetActive
-        if (originalAddPseudoClass)
-          this._sourceIndicator.add_style_pseudo_class = originalAddPseudoClass
+        restoreMethods?.()
+        restoreMethods = null
 
-        restoreMenuBox()
+        this._restoreMenuBoxOverrides(menuBoxState)
         this.remove_style_pseudo_class('active')
         this.remove_style_pseudo_class('checked')
         this._clearSourceIndicatorActiveState()
@@ -2725,18 +2738,35 @@ export const MirroredIndicatorButton = GObject.registerClass(
         )
       }
 
+      const abort = () => {
+        restored = true
+        if (openStateId) {
+          menu.disconnect(openStateId)
+          openStateId = 0
+        }
+        if (menu.isOpen) menuClose(menu, { animate: false })
+        restoreMethods?.()
+        restoreMethods = null
+        this._restoreMenuBoxOverrides(menuBoxState)
+        restoreSourceActor()
+        this.remove_style_pseudo_class('active')
+        this.remove_style_pseudo_class('checked')
+        this._clearSourceIndicatorActiveState()
+      }
+
       if (menu.isOpen) {
         keepAnchoredToMirror()
         if (originalSourceActor !== this) {
           openStateId = menu.connect('open-state-changed', (_m, isOpen) => {
             if (!isOpen) restoreAfterClose()
           })
+          untrack = this._trackMenuSession(abort)
         }
         menuClose(menu)
         return Clutter.EVENT_STOP
       }
 
-      this._preventMainPanelActiveState()
+      restoreMethods = this._preventMainPanelActiveState()
       this.add_style_pseudo_class('active')
       keepAnchoredToMirror()
 
@@ -2751,6 +2781,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
         restoreAfterClose()
       })
+      untrack = this._trackMenuSession(abort)
 
       menuOpen(menu)
 
@@ -2772,21 +2803,14 @@ export const MirroredIndicatorButton = GObject.registerClass(
       }
 
       // Store original state variables
-      let originalSourceActor = menu.sourceActor
-      let originalBoxPointer = menu.box?._sourceActor
-      let originalSetActive = this._sourceIndicator.setActive?.bind(
-        this._sourceIndicator,
-      )
-      let originalAddPseudoClass =
-        this._sourceIndicator.add_style_pseudo_class?.bind(
-          this._sourceIndicator,
-        )
-
-      // State for restoring menu box modifications
+      const originalSourceActor = menu.sourceActor
+      const originalBoxPointer = menu.box?._sourceActor
+      const anchorState = captureAnchorState(menu)
+      let restoreMethods = null
       let menuBoxState = null
-
       let openStateId = 0
       let restored = false
+      let untrack = null
 
       const keepAnchoredToMirror = () => {
         menu.sourceActor = this
@@ -2802,12 +2826,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         menu.sourceActor = originalSourceActor
         if (menu.box) menu.box._sourceActor = originalBoxPointer
 
-        if (menuBoxState?.sourceActorState) {
-          for (const state of menuBoxState.sourceActorState) {
-            state.actor._sourceActor = state.sourceActor
-            state.actor._sourceAllocation = state.sourceAllocation
-          }
-        }
+        restoreAnchorState(anchorState)
 
         this._genericMenuRestoreId = 0
         this._genericMenuPendingRestore = null
@@ -2818,15 +2837,14 @@ export const MirroredIndicatorButton = GObject.registerClass(
         if (restored) return
         restored = true
 
+        untrack?.()
         if (openStateId) {
           menu.disconnect(openStateId)
           openStateId = 0
         }
 
-        if (originalSetActive)
-          this._sourceIndicator.setActive = originalSetActive
-        if (originalAddPseudoClass)
-          this._sourceIndicator.add_style_pseudo_class = originalAddPseudoClass
+        restoreMethods?.()
+        restoreMethods = null
 
         this.remove_style_pseudo_class('active')
         this.remove_style_pseudo_class('checked')
@@ -2844,17 +2862,34 @@ export const MirroredIndicatorButton = GObject.registerClass(
         )
       }
 
+      const abort = () => {
+        restored = true
+        if (openStateId) {
+          menu.disconnect(openStateId)
+          openStateId = 0
+        }
+        if (menu.isOpen) menuClose(menu, { animate: false })
+        restoreMethods?.()
+        restoreMethods = null
+        this._restoreMenuBoxOverrides(menuBoxState)
+        restoreSourceActor()
+        this.remove_style_pseudo_class('active')
+        this.remove_style_pseudo_class('checked')
+        this._clearSourceIndicatorActiveState()
+      }
+
       if (menu.isOpen) {
         keepAnchoredToMirror()
         openStateId = menu.connect('open-state-changed', (_m, isOpen) => {
           if (!isOpen) restoreAfterClose()
         })
+        untrack = this._trackMenuSession(abort)
         menuClose(menu)
         return Clutter.EVENT_STOP
       }
 
       // Prevent active state on main panel indicator
-      this._preventMainPanelActiveState()
+      restoreMethods = this._preventMainPanelActiveState()
 
       // Add active style to THIS button
       this.add_style_pseudo_class('active')
@@ -2878,6 +2913,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
           restoreAfterClose()
         }
       })
+      untrack = this._trackMenuSession(abort)
 
       menuOpen(menu)
 
@@ -2886,27 +2922,49 @@ export const MirroredIndicatorButton = GObject.registerClass(
       return Clutter.EVENT_STOP
     }
 
-    _preventMainPanelActiveState() {
-      if (this._sourceIndicator.setActive) {
-        this._sourceIndicator.setActive = () => {}
+    // Returns the function that undoes the patches.
+    _preventMainPanelActiveState(target = this._sourceIndicator) {
+      const restores = []
+      if (target.setActive)
+        restores.push(overrideProperty(target, 'setActive', () => {}))
+
+      if (target.add_style_pseudo_class) {
+        const originalMethod = target.add_style_pseudo_class.bind(target)
+        restores.push(
+          overrideProperty(target, 'add_style_pseudo_class', (pseudoClass) => {
+            if (pseudoClass !== 'active' && pseudoClass !== 'checked')
+              originalMethod(pseudoClass)
+          }),
+        )
       }
 
-      if (this._sourceIndicator.add_style_pseudo_class) {
-        const originalMethod =
-          this._sourceIndicator.add_style_pseudo_class.bind(
-            this._sourceIndicator,
-          )
-        this._sourceIndicator.add_style_pseudo_class = (pseudoClass) => {
-          if (pseudoClass !== 'active' && pseudoClass !== 'checked') {
-            originalMethod(pseudoClass)
-          }
-        }
+      if (target.remove_style_pseudo_class) {
+        target.remove_style_pseudo_class('active')
+        target.remove_style_pseudo_class('checked')
       }
 
-      if (this._sourceIndicator.remove_style_pseudo_class) {
-        this._sourceIndicator.remove_style_pseudo_class('active')
-        this._sourceIndicator.remove_style_pseudo_class('checked')
+      return () => {
+        for (const restore of restores.reverse()) restore()
       }
+    }
+
+    // A menu left open when this mirror goes away (screen lock disables the
+    // extension) would keep the source patched and anchored to a dead
+    // actor. Each open menu registers how to undo itself immediately.
+    _trackMenuSession(abort) {
+      const sessions = (this._menuSessions ??= new Set())
+      sessions.add(abort)
+      return () => sessions.delete(abort)
+    }
+
+    _restoreMenuBoxOverrides(state) {
+      if (!state?.menuBox) return
+
+      state.restoreSetPosition?.()
+      state.restoreSetPosition = null
+      for (const constraint of state.removedConstraints ?? [])
+        state.menuBox.add_constraint(constraint)
+      state.removedConstraints = []
     }
 
     _updateMenuPositioning(menu, monitorIndex, sourceActor = this) {
@@ -2944,50 +3002,52 @@ export const MirroredIndicatorButton = GObject.registerClass(
 
       // 3. Handle setPosition override - FULL MANUAL REPLACEMENT
       // We do NOT call oldSetPosition because it likely crashes/fails on extended monitors
-      const originalSetPosition = menuBox.setPosition
-
       const monitor =
         Main.layoutManager.monitors[monitorIndex] ||
         Main.layoutManager.primaryMonitor
 
-      menuBox.setPosition = function (sourceActor) {
-        // Calculate position manually
-        const [btnX, btnY] = sourceActor.get_transformed_position()
-        const [btnW, btnH] = sourceActor.get_transformed_size()
-        const prefW = this.get_preferred_width(-1)
-        const prefH = this.get_preferred_height(-1)
-        const finalMenuW = prefW[1] // Use natural width
-        // Height might be dynamic, use current size or preferred?
-        // BoxPointer usually has size by now.
-        const [, currH] = this.get_size()
-        const finalMenuH = currH > 0 ? currH : prefH[1]
+      const restoreSetPosition = overrideProperty(
+        menuBox,
+        'setPosition',
+        function (sourceActor) {
+          // Calculate position manually
+          const [btnX, btnY] = sourceActor.get_transformed_position()
+          const [btnW, btnH] = sourceActor.get_transformed_size()
+          const prefW = this.get_preferred_width(-1)
+          const prefH = this.get_preferred_height(-1)
+          const finalMenuW = prefW[1] // Use natural width
+          // Height might be dynamic, use current size or preferred?
+          // BoxPointer usually has size by now.
+          const [, currH] = this.get_size()
+          const finalMenuH = currH > 0 ? currH : prefH[1]
 
-        // Center horizontally on the button
-        let newX = btnX + btnW / 2 - finalMenuW / 2
-        let newY = btnY + btnH // Below the button
+          // Center horizontally on the button
+          let newX = btnX + btnW / 2 - finalMenuW / 2
+          let newY = btnY + btnH // Below the button
 
-        // Constraint to monitor bounds
-        if (newX + finalMenuW > monitor.x + monitor.width) {
-          newX = monitor.x + monitor.width - finalMenuW
-        }
-        if (newX < monitor.x) {
-          newX = monitor.x
-        }
+          // Constraint to monitor bounds
+          if (newX + finalMenuW > monitor.x + monitor.width) {
+            newX = monitor.x + monitor.width - finalMenuW
+          }
+          if (newX < monitor.x) {
+            newX = monitor.x
+          }
 
-        // Vertical constraint (flip if needed, though usually bar is top)
-        if (newY + finalMenuH > monitor.y + monitor.height) {
-          newY = btnY - finalMenuH
-          if (this.setArrowSide) this.setArrowSide(St.Side.BOTTOM)
-        } else {
-          if (this.setArrowSide) this.setArrowSide(St.Side.TOP)
-        }
+          // Vertical constraint (flip if needed, though usually bar is top)
+          if (newY + finalMenuH > monitor.y + monitor.height) {
+            newY = btnY - finalMenuH
+            if (this.setArrowSide) this.setArrowSide(St.Side.BOTTOM)
+          } else {
+            if (this.setArrowSide) this.setArrowSide(St.Side.TOP)
+          }
 
-        this.set_position(Math.round(newX), Math.round(newY))
-      }
+          this.set_position(Math.round(newX), Math.round(newY))
+        },
+      )
 
       return {
         menuBox,
-        originalSetPosition,
+        restoreSetPosition,
         removedConstraints,
         sourceActorState,
       }
@@ -3030,8 +3090,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       menu,
       originalSourceActor,
       originalBoxPointer,
-      originalSetActive,
-      originalAddPseudoClass,
+      restoreMethods,
       menuBoxState,
     ) {
       // 1. Restore standard menu properties
@@ -3050,29 +3109,10 @@ export const MirroredIndicatorButton = GObject.registerClass(
       }
 
       // 2. Restore hijacked indicator methods
-      if (originalSetActive && this._sourceIndicator) {
-        this._sourceIndicator.setActive = originalSetActive
-      }
-
-      if (originalAddPseudoClass && this._sourceIndicator) {
-        this._sourceIndicator.add_style_pseudo_class = originalAddPseudoClass
-      }
+      restoreMethods?.()
 
       // 3. Restore menu box modifications (setPosition and constraints)
-      if (menuBoxState?.menuBox) {
-        if (menuBoxState.originalSetPosition)
-          menuBoxState.menuBox.setPosition = menuBoxState.originalSetPosition
-        else delete menuBoxState.menuBox.setPosition
-
-        if (
-          menuBoxState.removedConstraints &&
-          menuBoxState.removedConstraints.length > 0
-        ) {
-          menuBoxState.removedConstraints.forEach((constraint) => {
-            menuBoxState.menuBox.add_constraint(constraint)
-          })
-        }
-      }
+      this._restoreMenuBoxOverrides(menuBoxState)
 
       // 4. Reset style classes on source
       if (
@@ -3091,6 +3131,9 @@ export const MirroredIndicatorButton = GObject.registerClass(
     }
 
     _cleanup() {
+      for (const abort of [...(this._menuSessions ?? [])]) abort()
+      this._menuSessions = null
+
       for (const { child, proxy, visId } of this._astraProxyConnections ?? []) {
         child.disconnect(visId)
         this._unregisterAstraTooltipProxy(proxy, child)

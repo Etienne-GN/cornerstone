@@ -215,7 +215,7 @@ const fakes = {
   PanelMenu: { Button: PanelButton },
   global: {
     workspace_manager: { get_workspace_by_index: () => ({}) },
-    display: {},
+    display: new Actor(),
   },
   retainAstraSourceHeight: () => () => {},
   sourceIsVisible: (actor) => actor?.visible ?? false,
@@ -225,10 +225,12 @@ const fakes = {
   menuOpen(menu, params) {
     menuCalls.push(['open', JSON.stringify(params)])
     menu.isOpen = true
+    menu.emit?.('open-state-changed', true)
   },
   menuClose(menu, params) {
     menuCalls.push(['close', JSON.stringify(params)])
     menu.isOpen = false
+    menu.emit?.('open-state-changed', false)
   },
 }
 
@@ -551,3 +553,96 @@ test('GType names are namespaced to avoid clashing with MMB', () => {
     ],
   ])
 })
+
+class SourceButton extends Actor {
+  setActive(active) {
+    this.active = active
+  }
+}
+class BoxPointerFake extends Actor {
+  setPosition() {}
+  get_constraints() {
+    return []
+  }
+}
+class MenuFake extends Actor {
+  toggle() {
+    if (this.isOpen) fakes.menuClose(this)
+    else fakes.menuOpen(this)
+  }
+}
+
+const runTimeouts = () => {
+  for (const [id, callback] of timeouts) {
+    timeouts.delete(id)
+    callback()
+  }
+}
+
+function menuScenario(role, attach) {
+  const box = new BoxLayout()
+  box.add_child(new Label({ text: 'x' }))
+  const source = new SourceButton()
+  source.add_child(box)
+  fakes.Main.panel.statusArea[role] = source
+  const menu = new MenuFake({ isOpen: false })
+  menu.box = new BoxPointerFake({ _sourceActor: source })
+  menu.sourceActor = source
+  attach(source, menu)
+  const baseline = menu.handlers.size
+  const mirror = new MirroredIndicatorButton({ vertical: false }, role)
+  mirror._quickSettingsMenuPrimed = true
+  return { source, menu, mirror, baseline }
+}
+
+const paths = {
+  generic: (source, menu) => (source.menu = menu),
+  quickSettings: (source, menu) => (source.menu = menu),
+  arcMenu: (source, menu) => (source.arcMenu = menu),
+}
+
+function assertSourceRestored({ source, menu, baseline }, name) {
+  assert.equal(menu.handlers.size, baseline, `${name}: handlers released`)
+  for (const method of ['setActive', 'add_style_pseudo_class'])
+    assert.equal(Object.hasOwn(source, method), false, `${name}: ${method}`)
+  assert.equal(source.setActive, SourceButton.prototype.setActive)
+  assert.equal(Object.hasOwn(menu.box, 'setPosition'), false, name)
+  assert.equal(menu.sourceActor, source, `${name}: sourceActor`)
+  assert.equal(menu.box._sourceActor, source, `${name}: box source`)
+  assert.equal(menu.box._sourceAllocation, undefined, name)
+}
+
+for (const [name, attach] of Object.entries(paths)) {
+  const role = name === 'quickSettings' ? 'quickSettings' : `omni-${name}`
+
+  test(`${name}: destroying the mirror with its menu open restores the source`, () => {
+    timeouts.clear()
+    const scenario = menuScenario(role, attach)
+    const { menu, mirror, source } = scenario
+    mirror._onButtonPress(null)
+    assert.equal(menu.isOpen, true, 'menu opened')
+    assert.equal(menu.sourceActor, mirror, 'anchored to the mirror')
+    assert.ok(Object.hasOwn(source, 'setActive'), 'source patched while open')
+
+    mirror.destroy()
+    assert.equal(menu.isOpen, false, 'menu closed on destroy')
+    assertSourceRestored(scenario, name)
+    assert.doesNotThrow(() => menu.emit('open-state-changed', false))
+    assert.doesNotThrow(runTimeouts)
+    assertSourceRestored(scenario, name)
+    delete fakes.Main.panel.statusArea[role]
+  })
+
+  test(`${name}: a normal close leaves no own-property shadows`, () => {
+    timeouts.clear()
+    const scenario = menuScenario(role, attach)
+    const { menu, mirror } = scenario
+    mirror._onButtonPress(null)
+    fakes.menuClose(menu)
+    runTimeouts()
+    assertSourceRestored(scenario, name)
+    mirror.destroy()
+    assertSourceRestored(scenario, name)
+    delete fakes.Main.panel.statusArea[role]
+  })
+}
