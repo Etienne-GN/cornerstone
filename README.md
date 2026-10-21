@@ -1,6 +1,43 @@
 # Omnibar
 
-Omnibar is a fork of [Dash to Panel](https://github.com/home-sweet-gnome/dash-to-panel) for GNOME Shell 50 and 51. The name is temporary: see [`docs/RENAMING.md`](docs/RENAMING.md). The text below is the upstream README.
+Omnibar is a fork of [Dash to Panel](https://github.com/home-sweet-gnome/dash-to-panel)
+for GNOME Shell 50 and 51, with indicator mirroring derived from
+[Multi Monitor Bar](https://github.com/FrederykAbryan/multi-monitors-bar_fapv2).
+It replaces both extensions; do not run it alongside either of them. The name
+is temporary: see [`docs/RENAMING.md`](docs/RENAMING.md).
+
+## Features
+
+- Everything Dash to Panel does (taskbar, panel on every monitor, intellihide,
+  previews), unchanged.
+- Mirrored indicators: the top bar status indicators (AppIndicator, quick
+  settings and others) are mirrored on the bars of the other monitors, and
+  their menus open on that monitor. Per-monitor, per-indicator switches.
+- Action Center: quick settings, notifications and the calendar in one popup.
+  The clock and the system menu of any bar (mirrors included) open it on
+  that bar's monitor; Super+V / Super+M / Super+S open it on the monitor
+  under the pointer; a click on a notification banner opens it too, or
+  activates the notification if you prefer. It can be turned off in the
+  preferences to get GNOME's own menus back.
+
+Settings: page "Multi-monitor & Action Center" in the extension preferences.
+
+Moving from Dash to Panel and Multi Monitor Bar: see
+[`docs/SWITCHING.md`](docs/SWITCHING.md).
+
+## Credits
+
+- Dash to Panel, by Jason DeRose, Charles Gagnon and its contributors (see
+  the upstream README below).
+- Multi Monitor Bar, by Frederyk Abryan Palinoan, itself derived from
+  [Multi Monitors Add-On](https://github.com/spin83/multi-monitors-add-on) by
+  spin83. The mirroring code is adapted from it.
+
+## License
+
+GPL-2.0-or-later, as upstream. See [`COPYING`](COPYING).
+
+## Upstream README (Dash to Panel)
 
 <p align="left">
   <img src="/media/design/svg/D2P_logo.svg" width="620"/>
