@@ -22,6 +22,8 @@ import St from 'gi://St'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import { InjectionManager } from 'resource:///org/gnome/shell/extensions/extension.js'
 
+import { animateFromArg } from '../compat.js'
+
 const BANNER_CLICK_KEY = 'action-center-banner-click'
 const BANNER_OPENS_ACTION_CENTER = 'open-action-center'
 const BUTTON_ROLES = ['dateMenu', 'quickSettings']
@@ -108,7 +110,7 @@ export class ActionCenterRouter {
         'close',
         (original) =>
           function (...args) {
-            ac.close()
+            if (ac.isOpen) ac.close(animateFromArg(args[0]))
             return original.apply(this, args)
           },
       )

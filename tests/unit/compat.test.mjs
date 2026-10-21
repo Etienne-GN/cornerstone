@@ -75,3 +75,26 @@ test('verticalBoxProps uses orientation', () => {
   const { verticalBoxProps } = load('51.1')
   assert.deepEqual(plain(verticalBoxProps()), { orientation: 'v' })
 })
+
+test('animateFromArg reads a 50 PopupAnimation', () => {
+  const { animateFromArg } = load('50.5')
+  assert.deepEqual(plain(animateFromArg(PopupAnimation.NONE)), {
+    animate: false,
+  })
+  assert.deepEqual(plain(animateFromArg(PopupAnimation.FULL)), {
+    animate: true,
+  })
+  assert.deepEqual(plain(animateFromArg(undefined)), { animate: true })
+})
+
+test('animateFromArg reads a 51 params object', () => {
+  const { animateFromArg } = load('51.1')
+  assert.deepEqual(plain(animateFromArg({ animate: false })), {
+    animate: false,
+  })
+  assert.deepEqual(plain(animateFromArg({ animate: true })), {
+    animate: true,
+  })
+  assert.deepEqual(plain(animateFromArg({})), { animate: true })
+  assert.deepEqual(plain(animateFromArg(undefined)), { animate: true })
+})

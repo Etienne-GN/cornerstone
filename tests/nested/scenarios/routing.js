@@ -1,8 +1,11 @@
 import Clutter from 'gi://Clutter'
+import Gio from 'gi://Gio'
 import GLib from 'gi://GLib'
 import Shell from 'gi://Shell'
 import St from 'gi://St'
 
+import * as Config from 'resource:///org/gnome/shell/misc/config.js'
+import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js'
 
@@ -27,6 +30,12 @@ const PANEL_OVERRIDES = [
   'closeCalendar',
   'closeQuickSettings',
 ]
+
+// status/system.js closes this way before a screenshot.
+const NO_ANIMATION =
+  parseInt(Config.PACKAGE_VERSION, 10) >= 51
+    ? { animate: false }
+    : BoxPointer.PopupAnimation.NONE
 
 const ac = () => ext().stateObj.actionCenter
 const settings = () => ext().stateObj.getSettings()
@@ -232,6 +241,20 @@ export async function run() {
   await expectOpen('toggleQuickSettings reopen', secondary)
   qsMenu().close()
   await expectClosed('quickSettings.menu.close')
+
+  // run.sh turns animations off, which would hide a dropped argument.
+  const desktop = new Gio.Settings({ schema_id: 'org.gnome.desktop.interface' })
+  desktop.set_boolean('enable-animations', true)
+  await waitFor(() => St.Settings.get().enable_animations)
+  Main.panel.toggleQuickSettings()
+  await expectOpen('before close without animation', secondary)
+  qsMenu().close(NO_ANIMATION)
+  const leftVisible = ac().actor.visible
+  desktop.set_boolean('enable-animations', false)
+  assert(!ac().isOpen, 'close without animation left the popup open')
+  assert(!leftVisible, 'close without animation faded the popup out')
+  await expectClosed('quickSettings.menu.close without animation')
+  await waitFor(() => !St.Settings.get().enable_animations)
 
   Main.panel.toggleQuickSettings()
   await expectOpen('before closeQuickSettings', secondary)

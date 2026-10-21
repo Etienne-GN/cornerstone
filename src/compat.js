@@ -42,6 +42,14 @@ export function menuClose(menu, { animate = true } = {}) {
   )
 }
 
+// The inverse of menuOpen/menuClose: what a caller's open()/close()
+// argument asks for.
+export function animateFromArg(arg) {
+  if (IS_51) return { animate: arg?.animate !== false }
+
+  return { animate: arg !== BoxPointer.PopupAnimation.NONE }
+}
+
 // St.BoxLayout:vertical was deprecated in 48 and removed in 51.
 export function setBoxVertical(box, vertical) {
   if ('orientation' in box)
