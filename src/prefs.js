@@ -32,6 +32,7 @@ import Gdk from 'gi://Gdk'
 import * as PanelSettings from './panelSettings.js'
 import { releaseUrl } from './releaseLinks.js'
 import * as Pos from './panelPositions.js'
+import { MirrorPreferences } from './mirror/prefs.js'
 
 import {
   ExtensionPreferences,
@@ -202,6 +203,16 @@ const Preferences = class {
     this._builder.add_from_file(this._path + '/ui/SettingsAction.ui')
     let pageAction = this._builder.get_object('action')
     window.add(pageAction)
+
+    this._builder.add_from_file(this._path + '/ui/SettingsOmnibar.ui')
+    let pageOmnibar = this._builder.get_object('omnibar')
+    window.add(pageOmnibar)
+    const mirrorPreferences = new MirrorPreferences(
+      pageOmnibar,
+      settings,
+      this._builder.get_object('mirrorGroup'),
+    )
+    window.connect('close-request', () => mirrorPreferences.destroy())
 
     this._builder.add_from_file(this._path + '/ui/SettingsFineTune.ui')
     let pageFineTune = this._builder.get_object('finetune')

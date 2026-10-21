@@ -24,6 +24,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 
 import * as Utils from '../utils.js'
 import { MirroredIndicatorButton } from './mirroredIndicatorButton.js'
+import { clearCatalog, dtpPrimaryIndex, publishCatalog } from './catalog.js'
 import { BOX_NAMES, planMirrors } from './plan.js'
 import { VISIBILITY_KEY, indicatorIsEnabled, monitorKey } from './policy.js'
 
@@ -41,6 +42,7 @@ export class MirrorController {
   constructor(settings) {
     this._settings = settings
     this._panels = []
+    this._panelManager = null
     this._states = new Map()
     this._watched = new Set()
     this._signalsHandler = new Utils.GlobalSignalsHandler()
@@ -61,6 +63,7 @@ export class MirrorController {
   // Called on every dash-to-panel `panels-created`.
   attach(panels) {
     this.detach()
+    this._panelManager = panels[0]?.panelManager ?? null
     this._panels = panels.filter((p) => p.isStandalone && !p.isPrimary)
     this._refreshNow()
   }
@@ -87,6 +90,7 @@ export class MirrorController {
     this.detach()
     this._timeoutsHandler.destroy()
     this._signalsHandler.destroy()
+    clearCatalog(this._settings)
     for (const actor of this._watched) actor.disconnectObject(this)
     this._watched.clear()
   }
@@ -136,6 +140,12 @@ export class MirrorController {
   }
 
   _refreshNow() {
+    try {
+      publishCatalog(this._settings, this._panelManager)
+    } catch (e) {
+      console.error('[omnibar] mirror catalog', e)
+    }
+
     const enabled = this._settings.get_boolean(ENABLED_KEY)
 
     for (const panel of this._panels) {
@@ -170,9 +180,7 @@ export class MirrorController {
     const statusArea = Main.panel.statusArea
     // Main.panel lives on dash-to-panel's primary monitor, not necessarily
     // the system one.
-    const primaryIndex =
-      panel.panelManager.dtpPrimaryMonitor?.index ??
-      Main.layoutManager.primaryIndex
+    const primaryIndex = dtpPrimaryIndex(panel.panelManager)
     const key = monitorKey(global.display, panel.monitor.index, primaryIndex)
     const boxes = {}
     for (const box of BOX_NAMES)

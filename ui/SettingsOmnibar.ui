@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<interface>
+  <!-- interface-name SettingsOmnibar.ui -->
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="libadwaita" version="1.6"/>
+  <object class="AdwPreferencesPage" id="omnibar">
+    <property name="icon-name">video-display-symbolic</property>
+    <property name="title" translatable="yes">Multi-monitor &amp; Action Center</property>
+    <child>
+      <object class="AdwPreferencesGroup" id="mirrorGroup">
+        <property name="title" translatable="yes">Mirrored indicators</property>
+        <property name="description" translatable="yes">Show the top bar status indicators on the other monitors.</property>
+      </object>
+    </child>
+    <child>
+      <object class="AdwPreferencesGroup" id="actionCenterGroup">
+        <property name="visible">False</property>
+      </object>
+    </child>
+  </object>
+</interface>
