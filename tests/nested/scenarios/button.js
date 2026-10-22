@@ -48,6 +48,16 @@ function assertPlaced(what) {
       !area.quickSettings?.container.visible,
       `${what}: system menu slot #${i} visible`,
     )
+    // dash-to-panel reserves an element's preferred size even when hidden.
+    const system = area.quickSettings?.container
+    if (system) {
+      const [, natW] = system.get_preferred_width(-1)
+      const [, natH] = system.get_preferred_height(-1)
+      assert(
+        natW === 0 && natH === 0,
+        `${what}: system menu slot #${i} asks for ${natW}x${natH}`,
+      )
+    }
   }
   return areas.map(buttonIn)
 }

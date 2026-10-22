@@ -15,7 +15,11 @@ class Bin {
   constructor(child) {
     this._child = child
     this.visible = true
+    this.size = [-1, -1]
     this.handlers = new Map()
+  }
+  set_size(width, height) {
+    this.size = [width, height]
   }
   get_child() {
     return this._child
@@ -80,10 +84,12 @@ test('hide keeps the container hidden until show', () => {
   const bin = new Bin({})
   const slots = new Slots()
   slots.hide(bin)
+  assert.deepEqual(bin.size, [0, 0], 'asks for no room while hidden')
   bin.show()
   assert.equal(bin.visible, false, 'shown again by someone else, re-hidden')
   slots.show(bin)
   assert.equal(bin.visible, true)
+  assert.deepEqual(bin.size, [-1, -1], 'natural size back')
   bin.hide()
   bin.show()
   assert.equal(bin.visible, true, 'no watch left after show')

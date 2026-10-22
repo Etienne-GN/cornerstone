@@ -66,7 +66,9 @@ export class Slots {
       container.set_child(record.original)
   }
 
-  // dash-to-panel shows hidden containers again when it rebuilds.
+  // dash-to-panel shows hidden containers again when it rebuilds, and sizes
+  // its elements from their preferred size whether shown or not, so a hidden
+  // container also asks for no room.
   hide(container) {
     if (!this._hidden.has(container)) {
       this._hidden.add(container)
@@ -78,6 +80,7 @@ export class Slots {
         this._hideOwner,
       )
     }
+    container.set_size(0, 0)
     container.hide()
   }
 
@@ -85,6 +88,7 @@ export class Slots {
     if (!this._hidden.delete(container)) return
 
     container.disconnectObject(this._hideOwner)
+    container.set_size(-1, -1)
     container.show()
   }
 
