@@ -161,17 +161,26 @@ the tray layout does not list.
 
 ## Phase 5: preferences
 
-- [ ] 5.1 Window pages: Button, Action Center, Tray, About.
-- [ ] 5.2 Button page: live preview, draggable element list (indicators,
+- [x] 5.1 Window pages: Button, Action Center, Tray, About.
+- [~] 5.2 Button page: live preview, draggable element list (indicators,
   clock, date) with show switches and up/down buttons, clock presets,
   "More options" (custom format with cheat sheet, fonts, spacing),
   per-monitor override, reset.
-- [ ] 5.3 Action Center page: enable, width slider with Auto, sections,
+- [x] 5.3 Action Center page: enable, width slider with Auto, sections,
   swap, banner click, reset.
-- [ ] 5.4 Tray page: monitor selector named like GNOME Settings, draggable
+- [x] 5.4 Tray page: monitor selector named like GNOME Settings, draggable
   list with state (Shown / Overflow / Hidden) and box, reset.
-- [ ] 5.5 The shell publishes what prefs need (monitors, indicator roles
+- [x] 5.5 The shell publishes what prefs need (monitors, indicator roles
   and labels, quick settings items) through the catalog setting.
+
+Phase 5 result: pages are built in code (`src/prefs/`), so the nested
+`prefs-ui.js` loads each one against in-memory settings seeded with the
+catalog the shell published, exercises it, then shows the window for a
+capture per page; the scenario also opens the real window through the
+Extensions app. 5.2 is partial: no per-monitor override of the button
+yet, and no separate "More options" row (the custom format field and the
+format codes only appear for the Custom format). Fonts use GTK's font
+dialog.
 
 ## Phase 6: wrap-up
 
