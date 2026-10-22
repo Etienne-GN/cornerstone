@@ -120,15 +120,21 @@ Scenarios written for the separate clock and system menu call
 
 ## Phase 3: Action Center layout
 
-- [ ] 3.1 Two columns under a full-width quick settings row:
+- [x] 3.1 Two columns under a full-width quick settings row:
   notifications (and media) left, calendar right; `action-center-swap`
   swaps the sides.
-- [ ] 3.2 `action-center-width` (0 = auto, else px) applied on open and on
+- [x] 3.2 `action-center-width` (0 = auto, else px) applied on open and on
   change.
-- [ ] 3.3 Section switches: media, notifications, calendar, events, world
+- [x] 3.3 Section switches: media, notifications, calendar, events, world
   clocks, weather (hide the hosted GNOME widgets; restore on disable).
-- [ ] 3.4 Update `acLayout` for the new layout and the GNOME 51 height
+- [x] 3.4 Update `acLayout` for the new layout and the GNOME 51 height
   behaviour; captures.
+
+Phase 3 result: `acLayout` passes on 51. The popup keeps its natural
+height and grows to the work area as notifications pile up (the message
+list scrolls), instead of always filling the work area as Omnibar's test
+expected. Sections that can be hidden: quick-settings, notifications,
+today, calendar, events, world-clocks, weather.
 
 ## Phase 4: tray organization
 
