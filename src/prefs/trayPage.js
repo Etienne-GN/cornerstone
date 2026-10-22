@@ -86,6 +86,16 @@ export class TrayPage {
       Gio.SettingsBindFlags.DEFAULT,
     )
     top.add(this.mirrorRow)
+    this.columnsRow = Adw.SpinRow.new_with_range(1, 8, 1)
+    this.columnsRow.title = _('Overflow columns')
+    this.columnsRow.subtitle = _('Icons per row in the overflow popup.')
+    settings.bind(
+      'tray-overflow-columns',
+      this.columnsRow,
+      'value',
+      Gio.SettingsBindFlags.DEFAULT,
+    )
+    top.add(this.columnsRow)
     this.monitorRow = new Adw.ComboRow({ title: _('Monitor') })
     this.monitorRow.connect('notify::selected', () => {
       if (this._syncing) return

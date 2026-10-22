@@ -32,10 +32,97 @@ const CHEVRONS = {
   [St.Side.RIGHT]: 'pan-start-symbolic',
 }
 
+export const DEFAULT_COLUMNS = 4
+
+// Row by row, `columns` to a row, every cell a square as big as the
+// biggest icon.
+// Panel buttons have no height of their own outside a bar, which
+// Clutter.FlowLayout collapses; their CSS min-height gives them one here.
+export const OverflowGridLayout = GObject.registerClass(
+  { GTypeName: 'CornerstoneOverflowGridLayout' },
+  class OverflowGridLayout extends Clutter.LayoutManager {
+    _init(columns = DEFAULT_COLUMNS) {
+      super._init()
+      this._columns = Math.max(1, columns)
+      this._spacing = 0
+    }
+
+    get columns() {
+      return this._columns
+    }
+
+    set columns(columns) {
+      columns = Math.max(1, columns)
+      if (this._columns === columns) return
+      this._columns = columns
+      this.layout_changed()
+    }
+
+    set spacing(spacing) {
+      if (this._spacing === spacing) return
+      this._spacing = spacing
+      this.layout_changed()
+    }
+
+    _visible(container) {
+      return container.get_children().filter((child) => child.visible)
+    }
+
+    // [columns, rows, cell width, cell height]
+    _grid(container) {
+      const children = this._visible(container)
+      if (!children.length) return [0, 0, 0, 0]
+      let width = 0
+      let height = 0
+      for (const child of children) {
+        width = Math.max(width, child.get_preferred_width(-1)[1])
+        height = Math.max(height, child.get_preferred_height(-1)[1])
+      }
+      const columns = Math.min(this._columns, children.length)
+      const rows = Math.ceil(children.length / columns)
+      // Square cells: as easy to hit up and down as sideways.
+      const side = Math.max(width, height)
+      return [columns, rows, side, side]
+    }
+
+    _span(count, cell) {
+      return count ? count * cell + (count - 1) * this._spacing : 0
+    }
+
+    vfunc_get_preferred_width(container, _forHeight) {
+      const [columns, , width] = this._grid(container)
+      const size = this._span(columns, width)
+      return [size, size]
+    }
+
+    vfunc_get_preferred_height(container, _forWidth) {
+      const [, rows, , height] = this._grid(container)
+      const size = this._span(rows, height)
+      return [size, size]
+    }
+
+    vfunc_allocate(container, box) {
+      const [columns, , width, height] = this._grid(container)
+      const rtl =
+        container.get_text_direction() === Clutter.TextDirection.RTL
+      this._visible(container).forEach((child, index) => {
+        const column = index % columns
+        const row = Math.floor(index / columns)
+        const x = (rtl ? columns - 1 - column : column) * (width + this._spacing)
+        const y = row * (height + this._spacing)
+        const cell = new Clutter.ActorBox()
+        cell.set_origin(box.x1 + x, box.y1 + y)
+        cell.set_size(width, height)
+        child.allocate(cell)
+      })
+    }
+  },
+)
+
 export const OverflowButton = GObject.registerClass(
   { GTypeName: 'CornerstoneOverflowButton' },
   class OverflowButton extends PanelMenu.Button {
-    _init(side = St.Side.TOP) {
+    _init(side = St.Side.TOP, columns = DEFAULT_COLUMNS) {
       super._init(0.5, 'Cornerstone overflow')
       this.add_style_class_name('cornerstone-overflow-button')
       this._cornerstoneOverflow = true
@@ -49,9 +136,20 @@ export const OverflowButton = GObject.registerClass(
       this.menu.actor.add_style_class_name('cornerstone-overflow-popup')
       this.menu.box.add_style_class_name('cornerstone-overflow-menu')
 
-      // A row: panel buttons have no height of their own outside a bar,
-      // which a FlowLayout collapses to nothing.
-      this._flow = new St.BoxLayout({ style_class: 'cornerstone-overflow' })
+      this._grid = new OverflowGridLayout(columns)
+      this._flow = new St.Widget({
+        style_class: 'cornerstone-overflow',
+        layout_manager: this._grid,
+      })
+      this._flow.connectObject(
+        'style-changed',
+        () => {
+          this._grid.spacing = this._flow
+            .get_theme_node()
+            .get_length('spacing')
+        },
+        this,
+      )
       this.menu.box.add_child(this._flow)
       this._flow.connectObject(
         'child-added',
@@ -61,6 +159,10 @@ export const OverflowButton = GObject.registerClass(
         this,
       )
       this._sync()
+    }
+
+    setColumns(columns) {
+      this._grid.columns = columns
     }
 
     // Holds the overflowed mirrors' containers.

@@ -21,8 +21,27 @@ import {
   waitFor,
 } from '../lib.js'
 
-const ROLES = ['trayA', 'trayB']
-const ICONS = { trayA: 'face-smile-symbolic', trayB: 'weather-clear-symbolic' }
+const ROLES = ['trayA', 'trayB', 'trayC', 'trayD', 'trayE']
+const ICONS = {
+  trayA: 'face-smile-symbolic',
+  trayB: 'weather-clear-symbolic',
+  trayC: 'starred-symbolic',
+  trayD: 'mail-unread-symbolic',
+  trayE: 'emblem-system-symbolic',
+}
+
+// Distinct column and row positions of the overflow's icons.
+function gridShape(flow) {
+  const boxes = flow
+    .get_children()
+    .filter((c) => c.visible)
+    .map((c) => c.get_allocation_box())
+  for (const box of boxes)
+    assert(box.get_height() > 0 && box.get_width() > 0, 'icon cell has a size')
+  const xs = new Set(boxes.map((b) => Math.round(b.x1)))
+  const ys = new Set(boxes.map((b) => Math.round(b.y1)))
+  return [xs.size, ys.size]
+}
 
 function addFake(role) {
   const button = new PanelMenu.Button(0.5, role)
@@ -135,6 +154,28 @@ export async function run() {
   fakes.trayA.menu.close()
   await waitFor(() => !fakes.trayA.menu.isOpen)
   await sleep(400)
+
+  // Five icons in the overflow: a grid, as many columns as the setting.
+  settings().set_int('tray-overflow-columns', 2)
+  setLayout(
+    mainKey,
+    ROLES.map((role) => ({ role, box: 'right', state: 'overflow' })),
+  )
+  await waitFor(() => overflow.flow.get_n_children() === ROLES.length)
+  overflow.menu.toggle()
+  await waitFor(() => overflow.menu.isOpen)
+  await sleep(400)
+  let [columns, rows] = gridShape(overflow.flow)
+  assert(columns === 2 && rows === 3, `2 columns: ${columns} x ${rows}`)
+  await captureStage('4-overflow-grid')
+  settings().set_int('tray-overflow-columns', 4)
+  await sleep(300)
+  ;[columns, rows] = gridShape(overflow.flow)
+  assert(columns === 4 && rows === 2, `4 columns: ${columns} x ${rows}`)
+  await captureStage('5-overflow-grid-4')
+  overflow.menu.close()
+  await waitFor(() => !overflow.menu.isOpen)
+  settings().reset('tray-overflow-columns')
 
   settings().reset('tray-layout')
   await waitFor(() => !overflowOf(primaryState()))

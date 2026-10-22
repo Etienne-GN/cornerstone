@@ -37,6 +37,7 @@ const ENABLED_KEY = 'mirror-indicators'
 const QUICK_SETTINGS = 'quickSettings'
 const REFRESH = 'refresh'
 const REFRESH_DELAY_MS = 100
+const COLUMNS_KEY = 'tray-overflow-columns'
 const BOX_ACTORS = {
   left: '_leftBox',
   center: '_centerBox',
@@ -73,6 +74,7 @@ export class MirrorController {
         () => this.refresh(),
       ],
       [Main.extensionManager, 'extension-state-changed', () => this.refresh()],
+      [settings, `changed::${COLUMNS_KEY}`, () => this._syncColumns()],
     )
 
     // At shell shutdown Main.panel goes away under live mirrors; syncing
@@ -377,7 +379,10 @@ export class MirrorController {
     }
     if (state.overflow) return state.overflow
 
-    const button = new OverflowButton(panel.geom?.position ?? St.Side.TOP)
+    const button = new OverflowButton(
+      panel.geom?.position ?? St.Side.TOP,
+      this._settings.get_int(COLUMNS_KEY),
+    )
     state.overflow = button
     panel._rightBox.insert_child_at_index(button.container, 0)
     if (state.host.vertical) panel._setVertical(button.container, true)
@@ -391,6 +396,12 @@ export class MirrorController {
       this,
     )
     return button
+  }
+
+  _syncColumns() {
+    const columns = this._settings.get_int(COLUMNS_KEY)
+    for (const state of this._states.values())
+      state.overflow?.setColumns(columns)
   }
 
   _destroyOverflow(panel, state) {

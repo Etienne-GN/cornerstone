@@ -204,6 +204,11 @@ async function checkTrayPage() {
   const { tray } = readCatalog(settings)
   const items = page.items()
   assert(items.length === tray.length, 'one item per tray icon')
+  page.columnsRow.value = 6
+  assert(
+    settings.get_int('tray-overflow-columns') === 6,
+    'overflow columns saved',
+  )
   if (items.length >= 2) {
     const [first, second] = items.map((i) => i.role)
     page._write([items[1], items[0], ...items.slice(2)])
