@@ -11,6 +11,7 @@ import {
   useClassicLayout,
   MONITORS,
   assert,
+  bars,
   disable,
   done,
   enable,
@@ -113,6 +114,7 @@ export async function run() {
     `file://${GLib.getenv('CORNERSTONE_EXT_DIR')}/mirror/policy.js`
   )
 
+  await bars()
   await enable()
   await waitFor(() => global.dashToPanel?.panels?.length === MONITORS)
   const settings = ext().stateObj.getSettings()
