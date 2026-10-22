@@ -55,7 +55,12 @@ date '+%F %T' | tee ~/cornerstone-check-start.txt
     against the chevron. With several icons there, they form a grid;
     "Overflow columns" changes how many fit on a row;
   - set an icon to "Hidden": gone from that monitor only.
+  - drag the Overflow row, or change its box: the chevron follows;
+  - Copy to… gives another monitor (or all of them) this monitor's layout;
   - Reset puts that monitor back to GNOME's order.
+- Turn on "Custom icon spacing" and lower the pixels: the tray icons and
+  the chevron move closer on horizontal bars; turned off, the theme's
+  spacing comes back.
 
 ## 4. Preferences
 

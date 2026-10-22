@@ -19,6 +19,8 @@
 export const TRAY_KEY = 'tray-layout'
 export const BOXES = ['left', 'center', 'right']
 export const STATES = ['shown', 'overflow', 'hidden']
+// The overflow button's item: placed like an icon, always shown.
+export const OVERFLOW_ROLE = 'cornerstone:overflow'
 
 function isPlainObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -72,20 +74,30 @@ export function resetTrayItems(settings, key) {
 // in GNOME's order, with the box GNOME put them in. Saved items come first
 // in their saved order; icons never saved follow, shown unless
 // `defaultState(role)` says otherwise. Saved icons no longer present are
-// left out but stay saved.
+// left out but stay saved. The overflow is always there: where it was
+// saved, else first in the right box.
 export function planTray(sources, saved = [], defaultState = () => 'shown') {
-  const present = new Map(sources.map((s) => [s.role, s]))
+  const present = new Set([...sources.map((s) => s.role), OVERFLOW_ROLE])
   const items = []
   const seen = new Set()
   for (const item of saved) {
     if (!present.has(item.role) || seen.has(item.role)) continue
     seen.add(item.role)
-    items.push({ role: item.role, box: item.box, state: item.state })
+    const state = item.role === OVERFLOW_ROLE ? 'shown' : item.state
+    items.push({ role: item.role, box: item.box, state })
   }
   for (const { role, box } of sources) {
     if (seen.has(role)) continue
     seen.add(role)
     items.push({ role, box, state: defaultState(role) })
+  }
+  if (!seen.has(OVERFLOW_ROLE)) {
+    const right = items.findIndex((item) => item.box === 'right')
+    items.splice(right < 0 ? items.length : right, 0, {
+      role: OVERFLOW_ROLE,
+      box: 'right',
+      state: 'shown',
+    })
   }
   return items
 }
@@ -96,6 +108,17 @@ export function mergeTrayItems(saved = [], edited) {
   const editedRoles = new Set(edited.map((item) => item.role))
   const absent = saved.filter((item) => !editedRoles.has(item.role))
   return [...edited, ...absent]
+}
+
+// Gives the monitors `to` the layout of `from`: its `items` as planned
+// now, and its saved icons absent now.
+export function copyTrayItems(settings, from, to, items) {
+  const layout = readTrayLayout(settings)
+  const copied = mergeTrayItems(layout[from], items).map(
+    ({ role, box, state }) => ({ role, box, state }),
+  )
+  for (const key of to) layout[key] = copied
+  settings.set_string(TRAY_KEY, JSON.stringify(layout))
 }
 
 export function itemsInBox(items, box, state = 'shown') {

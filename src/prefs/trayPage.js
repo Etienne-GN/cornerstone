@@ -22,8 +22,10 @@ import Gtk from 'gi://Gtk'
 
 import {
   BOXES,
+  OVERFLOW_ROLE,
   STATES,
   TRAY_KEY,
+  copyTrayItems,
   mergeTrayItems,
   planTray,
   readTrayLayout,
@@ -31,6 +33,7 @@ import {
   writeTrayItems,
 } from '../tray/layout.js'
 import { VISIBILITY_KEY, indicatorIsEnabled } from '../mirror/policy.js'
+import { SPACING_KEY } from '../tray/spacing.js'
 import { CATALOG_KEY, readCatalog } from './catalog.js'
 import { _ } from './i18n.js'
 import { monitorNames, monitorTitle } from './monitors.js'
@@ -96,11 +99,32 @@ export class TrayPage {
       Gio.SettingsBindFlags.DEFAULT,
     )
     top.add(this.columnsRow)
+    this.spacingRow = new Adw.ExpanderRow({
+      title: _('Custom icon spacing'),
+      subtitle: _(
+        "Space on each side of a tray icon on horizontal bars; off keeps the theme's.",
+      ),
+      show_enable_switch: true,
+    })
+    this.spacingValueRow = Adw.SpinRow.new_with_range(0, 16, 1)
+    this.spacingValueRow.title = _('Pixels')
+    this.spacingValueRow.value = 4
+    this.spacingRow.add_row(this.spacingValueRow)
+    this.spacingRow.connect('notify::enable-expansion', () =>
+      this._writeSpacing(),
+    )
+    this.spacingValueRow.connect('notify::value', () => this._writeSpacing())
+    this._ids.push(
+      settings.connect(`changed::${SPACING_KEY}`, () => this._syncSpacing()),
+    )
+    this._syncSpacing()
+    top.add(this.spacingRow)
     this.monitorRow = new Adw.ComboRow({ title: _('Monitor') })
     this.monitorRow.connect('notify::selected', () => {
       if (this._syncing) return
       this._monitorKey =
         this._monitors[this.monitorRow.selected]?.key ?? 'main'
+      this._syncCopyTargets()
       this._syncIcons()
     })
     top.add(this.monitorRow)
@@ -113,9 +137,20 @@ export class TrayPage {
       tooltip_text: _("This monitor's icons back to GNOME's order"),
     })
     reset.connect('clicked', () => resetTrayItems(settings, this._monitorKey))
+    this._copyPopover = new Gtk.Popover()
+    this.copyButton = new Gtk.MenuButton({
+      label: _('Copy to…'),
+      valign: Gtk.Align.CENTER,
+      css_classes: ['flat'],
+      tooltip_text: _("This monitor's layout onto another monitor"),
+      popover: this._copyPopover,
+    })
+    const actions = new Gtk.Box({ spacing: 6 })
+    actions.append(this.copyButton)
+    actions.append(reset)
     this._iconGroup = new Adw.PreferencesGroup({
       title: _('Icons'),
-      header_suffix: reset,
+      header_suffix: actions,
     })
     this._iconRows = new RowSet(this._iconGroup)
     this.page.add(this._iconGroup)
@@ -129,6 +164,26 @@ export class TrayPage {
       this._names = names
       this._syncMonitors()
     })
+  }
+
+  _syncSpacing() {
+    const px = this._settings.get_int(SPACING_KEY)
+    this._syncing = true
+    try {
+      this.spacingRow.enable_expansion = px >= 0
+      if (px >= 0) this.spacingValueRow.value = px
+    } finally {
+      this._syncing = false
+    }
+  }
+
+  _writeSpacing() {
+    if (this._syncing) return
+    const px = this.spacingRow.enable_expansion
+      ? this.spacingValueRow.value
+      : -1
+    if (this._settings.get_int(SPACING_KEY) !== px)
+      this._settings.set_int(SPACING_KEY, px)
   }
 
   destroy() {
@@ -148,6 +203,7 @@ export class TrayPage {
     const titles = monitors.map((m) =>
       monitorTitle(m, this._names, m.primary ? 0 : extended++),
     )
+    this._titles = titles
     this._syncing = true
     try {
       this.monitorRow.model = Gtk.StringList.new(titles)
@@ -158,6 +214,36 @@ export class TrayPage {
       this._syncing = false
     }
     this.monitorRow.visible = monitors.length > 1
+    this._syncCopyTargets()
+  }
+
+  // The monitors the selected one's layout can be copied to.
+  _syncCopyTargets() {
+    const others = this._monitors
+      .map((m, i) => ({ key: m.key, title: this._titles[i] }))
+      .filter(({ key }) => key !== this._monitorKey)
+    const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
+    const add = (title, keys) => {
+      const button = new Gtk.Button({
+        child: new Gtk.Label({ label: title, xalign: 0 }),
+        css_classes: ['flat'],
+      })
+      button.connect('clicked', () => {
+        this._copyPopover.popdown()
+        this.copyTo(keys)
+      })
+      box.append(button)
+    }
+    for (const { key, title } of others) add(title, [key])
+    if (others.length > 1)
+      add(_('All other monitors'), others.map(({ key }) => key))
+    this._copyPopover.child = box
+    this.copyButton.visible = others.length > 0
+  }
+
+  // Gives the monitors `keys` the selected monitor's layout, as shown.
+  copyTo(keys) {
+    copyTrayItems(this._settings, this._monitorKey, keys, this.items())
   }
 
   // The icons of the selected monitor, as the shell would place them.
@@ -181,7 +267,7 @@ export class TrayPage {
     const { roles } = readCatalog(this._settings)
     const labels = new Map(roles.map((r) => [r.role, r]))
     const items = this.items()
-    if (!items.length) {
+    if (!items.some((item) => item.role !== OVERFLOW_ROLE)) {
       this._iconRows.add(
         new Adw.ActionRow({
           title: _('No tray icons'),
@@ -199,13 +285,24 @@ export class TrayPage {
       this._write(keys.map((role) => items.find((i) => i.role === role)))
 
     items.forEach((item, index) => {
+      const overflow = item.role === OVERFLOW_ROLE
       const info = labels.get(item.role)
-      const title = shortLabel(info?.label, item.role)
+      const title = overflow
+        ? _('Overflow')
+        : shortLabel(info?.label, item.role)
       const row = new Adw.ActionRow({
         title,
-        subtitle: title === item.role ? '' : item.role,
+        subtitle: overflow
+          ? _('The chevron, while icons are in the overflow')
+          : title === item.role
+            ? ''
+            : item.role,
       })
-      row.add_prefix(iconImage(info?.icon))
+      row.add_prefix(
+        overflow
+          ? new Gtk.Image({ icon_name: 'pan-down-symbolic', pixel_size: 16 })
+          : iconImage(info?.icon),
+      )
 
       const state = new Gtk.DropDown({
         model: Gtk.StringList.new(STATE_LABELS()),
@@ -235,7 +332,7 @@ export class TrayPage {
         ),
       )
       row.add_suffix(box)
-      row.add_suffix(state)
+      if (!overflow) row.add_suffix(state)
       makeReorderable(row, item.role, {
         first: index === 0,
         last: index === items.length - 1,

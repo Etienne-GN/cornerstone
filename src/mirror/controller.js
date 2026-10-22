@@ -29,9 +29,15 @@ import { Slots } from '../slots.js'
 import { clearCatalog, dtpPrimaryIndex, publishCatalog } from './catalog.js'
 import { BOX_NAMES } from './plan.js'
 import { VISIBILITY_KEY, indicatorIsEnabled, monitorKey } from './policy.js'
-import { TRAY_KEY, planTray, readTrayLayout } from '../tray/layout.js'
+import {
+  OVERFLOW_ROLE,
+  TRAY_KEY,
+  planTray,
+  readTrayLayout,
+} from '../tray/layout.js'
 import { PrimaryTray } from '../tray/primaryTray.js'
 import { OverflowButton } from '../tray/overflow.js'
+import { SPACING_KEY, TraySpacing } from '../tray/spacing.js'
 
 const ENABLED_KEY = 'mirror-indicators'
 const QUICK_SETTINGS = 'quickSettings'
@@ -56,6 +62,7 @@ export class MirrorController {
     this._mainPanelGone = false
     this._slots = new Slots()
     this._primaryTray = new PrimaryTray()
+    this._spacing = new TraySpacing()
     this._primaryBar = null
     this._sources = new Map()
     // Set by whoever owns the system menu slot instead (the one button).
@@ -70,6 +77,7 @@ export class MirrorController {
           `changed::${VISIBILITY_KEY}`,
           `changed::${ENABLED_KEY}`,
           `changed::${TRAY_KEY}`,
+          `changed::${SPACING_KEY}`,
         ],
         () => this.refresh(),
       ],
@@ -162,6 +170,7 @@ export class MirrorController {
 
   destroy() {
     this.detach()
+    this._spacing.restoreAll()
     // After the mirrors, which clone the icons it holds.
     try {
       this._primaryTray.destroy()
@@ -254,6 +263,9 @@ export class MirrorController {
           this._itemsFor(primary),
           this._states.get(primary)?.overflow?.container ?? null,
         )
+        const px = this._spacingFor(primary)
+        for (const role of this._sources.keys())
+          this._spacing.apply(Main.panel.statusArea[role], px)
       } catch (e) {
         console.error('[cornerstone] tray refresh', e)
       }
@@ -267,6 +279,13 @@ export class MirrorController {
         console.error('[cornerstone] mirror refresh', e)
       }
     }
+  }
+
+  // Tray icon padding on the panel, in pixels; -1 for the theme's. Vertical
+  // bars keep their own.
+  _spacingFor(panel) {
+    if (panel.checkIfVertical()) return -1
+    return this._settings.get_int(SPACING_KEY)
   }
 
   _keyFor(panel) {
@@ -311,7 +330,8 @@ export class MirrorController {
     const state = this._stateFor(panel)
     const statusArea = Main.panel.statusArea
     // An icon its extension hides is not mirrored, wherever it sits.
-    const items = this._itemsFor(panel).filter(
+    const planned = this._itemsFor(panel)
+    const items = planned.filter(
       (item) =>
         item.state !== 'hidden' &&
         statusArea[item.role] &&
@@ -330,8 +350,22 @@ export class MirrorController {
     const overflowItems = items.filter((item) => item.state === 'overflow')
     const overflow = this._syncOverflow(panel, state, overflowItems.length > 0)
 
-    const positions = { left: 0, center: 0, right: overflow ? 1 : 0 }
-    for (const { box, role } of items) {
+    const px = this._spacingFor(panel)
+    this._spacing.apply(overflow, px)
+    // The primary bar's icons and overflow are placed by PrimaryTray.
+    const positions = { left: 0, center: 0, right: 0 }
+    for (const { box, role } of panel.isPrimaryBar ? [] : planned) {
+      if (role === OVERFLOW_ROLE) {
+        if (overflow)
+          this._place(
+            panel,
+            overflow.container,
+            panel[BOX_ACTORS[box]],
+            positions[box]++,
+            state.host.vertical,
+          )
+        continue
+      }
       if (placement.get(role) !== 'shown') continue
       const entry =
         state.mirrors.get(role) ??
@@ -340,11 +374,13 @@ export class MirrorController {
 
       this._place(
         panel,
-        entry.mirror,
+        entry.mirror.container,
         panel[BOX_ACTORS[box]],
         positions[box]++,
         state.host.vertical,
       )
+      entry.mirror.syncOrientation(state.host.vertical)
+      this._spacing.apply(entry.mirror, px)
     }
 
     let index = 0
@@ -370,8 +406,8 @@ export class MirrorController {
     if (!panel.isPrimaryBar) this._syncQuickSettings(panel, state)
   }
 
-  // The panel's overflow button, at the start of its right box, while it
-  // has icons to hold.
+  // The panel's overflow button, while it has icons to hold. It starts in
+  // the right box; its item then places it.
   _syncOverflow(panel, state, wanted) {
     if (!wanted) {
       this._destroyOverflow(panel, state)
@@ -415,8 +451,7 @@ export class MirrorController {
     button.destroy()
   }
 
-  _place(panel, mirror, box, position, vertical) {
-    const container = mirror.container
+  _place(panel, container, box, position, vertical) {
     const parent = container.get_parent()
 
     if (parent !== box) {
@@ -426,7 +461,6 @@ export class MirrorController {
     } else if (box.get_child_at_index(position) !== container) {
       box.set_child_at_index(container, position)
     }
-    mirror.syncOrientation(vertical)
   }
 
   _createMirror(panel, state, role, track = true, placement = 'shown') {

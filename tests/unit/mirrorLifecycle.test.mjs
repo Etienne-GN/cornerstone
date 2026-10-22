@@ -743,12 +743,18 @@ const { MirrorController } = loadGjs(controllerPath, {
     destroy() {}
   },
   OverflowButton: class {},
+  OVERFLOW_ROLE: 'cornerstone:overflow',
+  SPACING_KEY: 'tray-icon-spacing',
+  TraySpacing: class {
+    apply() {}
+    restoreAll() {}
+  },
   VISIBILITY_KEY: 'mirror-visibility',
   indicatorIsEnabled: () => true,
   monitorKey: () => 'key',
 })
 
-const settingsFake = { get_boolean: () => true }
+const settingsFake = { get_boolean: () => true, get_int: () => -1 }
 
 function controllerPanels(controller, n, role) {
   const panels = []

@@ -1,6 +1,7 @@
 // Tray organization: per monitor order, box and state (shown / overflow /
-// hidden), the overflow popup opening icon menus against its button, and
-// everything back in place on disable. Run with --monitors 2.
+// hidden), the overflow popup opening icon menus against its button, the
+// overflow placed like an icon, icon spacing, and everything back in place
+// on disable. Run with --monitors 2.
 
 import St from 'gi://St'
 
@@ -21,6 +22,7 @@ import {
   waitFor,
 } from '../lib.js'
 
+const OVERFLOW = 'cornerstone:overflow'
 const ROLES = ['trayA', 'trayB', 'trayC', 'trayD', 'trayE']
 const ICONS = {
   trayA: 'face-smile-symbolic',
@@ -70,6 +72,8 @@ function mirrorsIn(actor, role) {
 function overflowOf(state) {
   return state?.overflow ?? null
 }
+
+const allocatedWidth = (actor) => actor.get_allocation_box().get_width()
 
 function setLayout(key, items) {
   const s = settings()
@@ -177,6 +181,52 @@ export async function run() {
   await waitFor(() => !overflow.menu.isOpen)
   settings().reset('tray-overflow-columns')
 
+  // The overflow placed by its item: after trayB on the primary bar, in
+  // the left box on the secondary one.
+  setLayout(mainKey, [
+    { role: 'trayB', box: 'right', state: 'shown' },
+    { role: OVERFLOW, box: 'right', state: 'shown' },
+    { role: 'trayA', box: 'right', state: 'overflow' },
+  ])
+  await waitFor(
+    () =>
+      right.get_child_at_index(0) === fakes.trayB.container &&
+      right.get_child_at_index(1) === overflowOf(primaryState())?.container,
+  )
+  const otherState = () => c._states.get(panel)
+  setLayout(otherKey, [
+    { role: 'trayC', box: 'right', state: 'overflow' },
+    { role: OVERFLOW, box: 'left', state: 'shown' },
+  ])
+  await waitFor(
+    () =>
+      overflowOf(otherState())?.container.get_parent() === panel._leftBox,
+  )
+  await sleep(300)
+  await captureStage('6-overflow-moved')
+
+  // Spacing: the padding goes, on real icons and mirrors, and comes back.
+  const [mirrorB] = await waitFor(() => {
+    const found = mirrorsIn(panel._rightBox, 'trayB')
+    return found.length === 1 && found
+  })
+  const padded = allocatedWidth(fakes.trayB)
+  const icon = (button) => button.get_first_child().get_preferred_width(-1)[1]
+  assert(padded > icon(fakes.trayB), `theme padding: ${padded}`)
+  settings().set_int('tray-icon-spacing', 0)
+  await waitFor(
+    () =>
+      allocatedWidth(fakes.trayB) === icon(fakes.trayB) &&
+      allocatedWidth(mirrorB) === icon(mirrorB) &&
+      allocatedWidth(overflowOf(primaryState())) ===
+        icon(overflowOf(primaryState())),
+  )
+  await sleep(300)
+  await captureStage('7-spacing-0')
+  settings().reset('tray-icon-spacing')
+  await waitFor(() => allocatedWidth(fakes.trayB) === padded)
+  assert(fakes.trayB.get_style() === null, 'trayB style given back')
+
   settings().reset('tray-layout')
   await waitFor(() => !overflowOf(primaryState()))
   await waitFor(() =>
@@ -191,7 +241,18 @@ export async function run() {
   await waitFor(
     () => fakes.trayA.container.get_parent() === c._primaryTray.holder,
   )
+  fakes.trayC.set_style('color: red;')
+  settings().set_int('tray-icon-spacing', 2)
+  await waitFor(() => fakes.trayB.get_style() !== null)
   await disable()
+  settings().reset('tray-icon-spacing')
+  assert(
+    ROLES.every(
+      (role) =>
+        fakes[role].get_style() === (role === 'trayC' ? 'color: red;' : null),
+    ),
+    'tray icon styles given back on disable',
+  )
   const restored = right.get_children()
   assert(
     original.every((child, i) => restored[i] === child),

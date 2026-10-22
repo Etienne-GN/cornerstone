@@ -33,7 +33,9 @@ holds only its own features: see the
   their menus open there.
 - Tray organization, per monitor: order the icons, put them in the left,
   centre or right part of the bar, hide them, or tuck them in an overflow
-  behind a chevron, Windows style, in a grid as wide as you like.
+  behind a chevron, Windows style, in a grid as wide as you like. The
+  chevron goes wherever you put it, the icons can sit closer together,
+  and a monitor's layout can be copied to the others.
 - Everything can be turned off to get GNOME's own clock, menus and
   popups back.
 

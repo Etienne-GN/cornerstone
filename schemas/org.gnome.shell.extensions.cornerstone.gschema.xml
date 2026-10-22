@@ -23,13 +23,19 @@
     <key type="s" name="tray-layout">
       <default>'{}'</default>
       <summary>Tray layout</summary>
-      <description>Per monitor, the tray icons in order with their bar box (left, center, right) and state (shown, overflow, hidden), as JSON.</description>
+      <description>Per monitor, the tray icons and the overflow button in order with their bar box (left, center, right) and state (shown, overflow, hidden), as JSON.</description>
     </key>
     <key type="i" name="tray-overflow-columns">
       <range min="1" max="8"/>
       <default>4</default>
       <summary>Overflow columns</summary>
       <description>How many icons a row of the tray overflow popup holds.</description>
+    </key>
+    <key type="i" name="tray-icon-spacing">
+      <range min="-1" max="16"/>
+      <default>-1</default>
+      <summary>Tray icon spacing</summary>
+      <description>Horizontal padding on each side of a tray icon on horizontal bars, in pixels; -1 keeps the theme's.</description>
     </key>
     <key type="b" name="action-center">
       <default>true</default>

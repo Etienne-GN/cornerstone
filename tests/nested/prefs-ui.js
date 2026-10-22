@@ -265,7 +265,33 @@ async function checkTrayPage() {
   const page = new TrayPage(settings)
   const { tray } = readCatalog(settings)
   const items = page.items()
-  assert(items.length === tray.length, 'one item per tray icon')
+  assert(
+    items.length === tray.length + 1,
+    'one item per tray icon, and the overflow',
+  )
+  assert(!page.spacingRow.enable_expansion, 'theme spacing by default')
+  page.spacingRow.enable_expansion = true
+  assert(
+    settings.get_int('tray-icon-spacing') === page.spacingValueRow.value,
+    'custom spacing saved when switched on',
+  )
+  page.spacingValueRow.value = 3
+  assert(settings.get_int('tray-icon-spacing') === 3, 'icon spacing saved')
+  page.spacingRow.enable_expansion = false
+  assert(settings.get_int('tray-icon-spacing') === -1, 'theme spacing saved')
+  settings.set_int('tray-icon-spacing', 7)
+  assert(
+    page.spacingRow.enable_expansion && page.spacingValueRow.value === 7,
+    'spacing rows follow the setting',
+  )
+  settings.reset('tray-icon-spacing')
+  page.copyTo(['connector:TEST-1'])
+  const copied = JSON.parse(settings.get_string('tray-layout'))['connector:TEST-1']
+  assert(
+    JSON.stringify(copied) === JSON.stringify(items),
+    'layout copied to another monitor',
+  )
+  settings.reset('tray-layout')
   page.columnsRow.value = 6
   assert(
     settings.get_int('tray-overflow-columns') === 6,

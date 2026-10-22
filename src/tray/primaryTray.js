@@ -22,7 +22,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 
 import { WidgetMover } from '../actionCenter/widgetMover.js'
 import { roleForChild } from '../mirror/plan.js'
-import { BOXES } from './layout.js'
+import { BOXES, OVERFLOW_ROLE } from './layout.js'
 
 export const BOX_ACTORS = {
   left: '_leftBox',
@@ -78,13 +78,15 @@ export class PrimaryTray {
       )
   }
 
-  // Puts every icon where `items` says. Icons GNOME or other extensions
+  // Puts every icon where `items` says, and `overflow`, the overflow
+  // button's container, when there is one. Icons GNOME or other extensions
   // put in a box and that are not tray icons keep their place: tray icons
   // go after them in the left and centre boxes, before them in the right
-  // box (after `leading`, the overflow button, when there is one).
-  apply(items, leading = null) {
+  // box.
+  apply(items, overflow = null) {
     const children = new Map()
     for (const [role, origin] of this._origins) children.set(role, origin.child)
+    if (overflow) children.set(OVERFLOW_ROLE, overflow)
     const managed = new Set(children.values())
 
     for (const box of BOXES) {
@@ -97,12 +99,9 @@ export class PrimaryTray {
         .filter(Boolean)
       const others = parent
         .get_children()
-        .filter((child) => !managed.has(child) && child !== leading)
-      const lead = box === 'right' && leading?.get_parent() === parent
+        .filter((child) => !managed.has(child))
       const desired =
-        box === 'right'
-          ? [...(lead ? [leading] : []), ...shown, ...others]
-          : [...others, ...shown]
+        box === 'right' ? [...shown, ...others] : [...others, ...shown]
 
       desired.forEach((child, index) => {
         if (!managed.has(child)) return
@@ -110,7 +109,7 @@ export class PrimaryTray {
           child.get_parent() !== parent ||
           parent.get_child_at_index(index) !== child
         )
-          this._mover.move(child, parent, index)
+          this._move(child, parent, index, overflow)
       })
     }
 
@@ -120,6 +119,21 @@ export class PrimaryTray {
       if (child && child.get_parent() !== this._holder)
         this._mover.move(child, this._holder)
     }
+  }
+
+  // The overflow is Cornerstone's own, destroyed on disable: not recorded
+  // for restoring.
+  _move(child, parent, index, overflow) {
+    if (child !== overflow) {
+      this._mover.move(child, parent, index)
+      return
+    }
+    if (child.get_parent() === parent) {
+      parent.set_child_at_index(child, index)
+      return
+    }
+    child.get_parent()?.remove_child(child)
+    parent.insert_child_at_index(child, index)
   }
 
   _forget(role) {

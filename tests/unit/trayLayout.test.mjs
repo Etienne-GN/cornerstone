@@ -27,8 +27,11 @@ const sources = [
   { role: 'arcmenu', box: 'left' },
 ]
 
-test('nothing saved: GNOME order, all shown', () => {
+const OVERFLOW = tray.OVERFLOW_ROLE
+
+test('nothing saved: GNOME order, all shown, the overflow first right', () => {
   assert.deepEqual(plain(tray.planTray(sources)), [
+    { role: OVERFLOW, box: 'right', state: 'shown' },
     { role: 'vitals', box: 'right', state: 'shown' },
     { role: 'appindicator', box: 'right', state: 'shown' },
     { role: 'arcmenu', box: 'left', state: 'shown' },
@@ -46,9 +49,37 @@ test('saved items first, new icons after with the default state', () => {
   )
   assert.deepEqual(plain(items), [
     { role: 'appindicator', box: 'center', state: 'overflow' },
+    { role: OVERFLOW, box: 'right', state: 'shown' },
     { role: 'vitals', box: 'right', state: 'shown' },
     { role: 'arcmenu', box: 'left', state: 'hidden' },
   ])
+})
+
+test('the overflow stays where it was saved, always shown', () => {
+  const saved = [
+    { role: 'vitals', box: 'right', state: 'shown' },
+    { role: OVERFLOW, box: 'left', state: 'hidden' },
+  ]
+  assert.deepEqual(
+    plain(tray.planTray(sources, saved)).map(
+      (i) => `${i.role}:${i.box}:${i.state}`,
+    ),
+    [
+      'vitals:right:shown',
+      `${OVERFLOW}:left:shown`,
+      'appindicator:right:shown',
+      'arcmenu:left:shown',
+    ],
+  )
+})
+
+test('no icon in the right box: the overflow comes last', () => {
+  assert.deepEqual(
+    plain(tray.planTray([{ role: 'arcmenu', box: 'left' }])).map(
+      (i) => i.role,
+    ),
+    ['arcmenu', OVERFLOW],
+  )
 })
 
 test('read drops invalid items and logs invalid JSON once', () => {
@@ -92,18 +123,19 @@ test('move places an item at an index of a box', () => {
   const moved = tray.moveTrayItem(items, 'arcmenu', 'right', 1)
   assert.deepEqual(
     plain(moved).map((i) => `${i.role}:${i.box}`),
-    ['vitals:right', 'arcmenu:right', 'appindicator:right'],
+    [`${OVERFLOW}:right`, 'arcmenu:right', 'vitals:right', 'appindicator:right'],
   )
   const last = tray.moveTrayItem(items, 'vitals', 'right', 99)
   assert.deepEqual(
     plain(last).map((i) => i.role),
-    ['appindicator', 'arcmenu', 'vitals'],
+    [OVERFLOW, 'appindicator', 'arcmenu', 'vitals'],
   )
 })
 
 test('state changes and box filters', () => {
   const items = tray.setTrayItemState(tray.planTray(sources), 'vitals', 'overflow')
   assert.deepEqual(plain(tray.itemsInBox(items, 'right')).map((i) => i.role), [
+    OVERFLOW,
     'appindicator',
   ])
   assert.deepEqual(
@@ -122,4 +154,28 @@ test('merge keeps saved icons that are absent now', () => {
     { role: 'a', box: 'left', state: 'overflow' },
     { role: 'gone', box: 'right', state: 'hidden' },
   ])
+})
+
+test('copy replaces the target monitors with the source layout', () => {
+  const s = settings(
+    JSON.stringify({
+      main: [{ role: 'gone', box: 'left', state: 'hidden' }],
+      'connector:DP-2': [{ role: 'vitals', box: 'left', state: 'shown' }],
+    }),
+  )
+  const items = tray.planTray(sources, [], (role) =>
+    role === 'vitals' ? 'overflow' : 'shown',
+  )
+  tray.copyTrayItems(s, 'main', ['connector:DP-2', 'connector:DP-3'], items)
+  const layout = JSON.parse(s.raw)
+  const expected = [
+    { role: OVERFLOW, box: 'right', state: 'shown' },
+    { role: 'vitals', box: 'right', state: 'overflow' },
+    { role: 'appindicator', box: 'right', state: 'shown' },
+    { role: 'arcmenu', box: 'left', state: 'shown' },
+    { role: 'gone', box: 'left', state: 'hidden' },
+  ]
+  assert.deepEqual(layout['connector:DP-2'], expected)
+  assert.deepEqual(layout['connector:DP-3'], expected)
+  assert.deepEqual(layout.main, [{ role: 'gone', box: 'left', state: 'hidden' }])
 })
