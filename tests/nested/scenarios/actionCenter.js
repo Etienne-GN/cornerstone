@@ -87,7 +87,7 @@ function assertRestored(snap, what) {
       `${what}: message list capture container not restored`,
     )
   assert(
-    !Main.uiGroup.get_children().some((a) => a._delegate?.qsHost),
+    !Main.uiGroup.get_children().some((a) => a._delegate?.blockHosts),
     `${what}: action center menu left on stage`,
   )
   assertNoModal(what)

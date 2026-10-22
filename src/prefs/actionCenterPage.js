@@ -20,11 +20,10 @@ import Gio from 'gi://Gio'
 import Gtk from 'gi://Gtk'
 
 import { _ } from './i18n.js'
-import { SECTIONS } from './labels.js'
+import { LayoutEditor } from './layoutEditor.js'
 
 const BANNER_KEY = 'action-center-banner-click'
 const WIDTH_KEY = 'action-center-width'
-const HIDDEN_KEY = 'action-center-hidden-sections'
 const DEFAULT_WIDTH = 760
 
 export class ActionCenterPage {
@@ -38,8 +37,10 @@ export class ActionCenterPage {
       icon_name: 'view-grid-symbolic',
     })
     this._buildGeneral()
-    this._buildLayout()
-    this._buildSections()
+    this.layoutEditor = new LayoutEditor(settings)
+    this.page.add(this.layoutEditor.mockGroup)
+    this.page.add(this.layoutEditor.optionsGroup)
+    this._buildSize()
   }
 
   _connect(key, callback) {
@@ -58,6 +59,7 @@ export class ActionCenterPage {
   destroy() {
     for (const id of this._ids) this._settings.disconnect(id)
     this._ids = []
+    this.layoutEditor.destroy()
   }
 
   _reset(keys) {
@@ -119,10 +121,10 @@ export class ActionCenterPage {
     this.page.add(group)
   }
 
-  _buildLayout() {
+  _buildSize() {
     const group = new Adw.PreferencesGroup({
-      title: _('Layout'),
-      header_suffix: this._reset([WIDTH_KEY, 'action-center-swap']),
+      title: _('Size'),
+      header_suffix: this._reset([WIDTH_KEY]),
     })
 
     this.autoRow = new Adw.SwitchRow({
@@ -162,47 +164,6 @@ export class ActionCenterPage {
     group.add(this.autoRow)
     group.add(this.widthRow)
 
-    const swap = new Adw.SwitchRow({
-      title: _('Calendar on the left'),
-      subtitle: _('Notifications go to the right.'),
-    })
-    this._settings.bind(
-      'action-center-swap',
-      swap,
-      'active',
-      Gio.SettingsBindFlags.DEFAULT,
-    )
-    group.add(swap)
-    this.page.add(group)
-  }
-
-  _buildSections() {
-    const group = new Adw.PreferencesGroup({
-      title: _('Sections'),
-      header_suffix: this._reset([HIDDEN_KEY]),
-    })
-    this.sectionRows = {}
-    for (const [section, label] of SECTIONS) {
-      const row = new Adw.SwitchRow({ title: label() })
-      row.connect('notify::active', () => {
-        if (this._syncing) return
-        const hidden = this._settings
-          .get_strv(HIDDEN_KEY)
-          .filter((s) => s !== section)
-        if (!row.active) hidden.push(section)
-        this._settings.set_strv(HIDDEN_KEY, hidden)
-      })
-      this.sectionRows[section] = row
-      group.add(row)
-    }
-    const sync = () =>
-      this._guarded(() => {
-        const hidden = this._settings.get_strv(HIDDEN_KEY)
-        for (const [section, row] of Object.entries(this.sectionRows))
-          row.active = !hidden.includes(section)
-      })
-    this._connect(HIDDEN_KEY, sync)
-    sync()
     this.page.add(group)
   }
 }

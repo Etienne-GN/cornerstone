@@ -130,14 +130,14 @@
 	border-width: 0;
 }
 
-.cornerstone-action-center-calendar .datemenu-calendar-column:ltr,
-.cornerstone-action-center-calendar .datemenu-calendar-column:rtl {
-	margin: 0;
+/* Columns side by side in a row of the layout. */
+.cornerstone-action-center-row {
+	spacing: 18px;
 }
 
-/* Two columns under the quick settings. */
-.cornerstone-action-center-columns {
-	spacing: 18px;
+/* Blocks stacked in a column, spaced as dateMenu.js's calendar column. */
+.cornerstone-action-center-column {
+	spacing: 6px;
 }
 
 /* The one button. */

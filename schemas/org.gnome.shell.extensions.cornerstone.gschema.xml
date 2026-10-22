@@ -47,15 +47,10 @@
       <summary>Action Center width</summary>
       <description>Width of the Action Center in pixels; 0 fits its content.</description>
     </key>
-    <key type="b" name="action-center-swap">
-      <default>false</default>
-      <summary>Swap the Action Center columns</summary>
-      <description>Put the calendar on the left and the notifications on the right.</description>
-    </key>
-    <key type="as" name="action-center-hidden-sections">
-      <default>[]</default>
-      <summary>Hidden Action Center sections</summary>
-      <description>Sections not shown: quick-settings, notifications, today, calendar, events, world-clocks, weather.</description>
+    <key type="s" name="action-center-layout">
+      <default>''</default>
+      <summary>Action Center layout</summary>
+      <description>JSON: {"rows": [{"align", "columns": [{"width", "valign", "blocks": [{"id", "align"}]}]}]}. Blocks: quick-settings, notifications, today, calendar, events, world-clocks, weather; a block left out is hidden. Row align: center, start or end, used when no column fills. Column width: fill or fit; valign: start, center, end or fill. Block align: fill, start, center or end. Empty is the default layout.</description>
     </key>
     <key type="b" name="one-button">
       <default>true</default>

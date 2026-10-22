@@ -19,12 +19,15 @@ holds only its own features: see the
   pick, with a live preview in the preferences. Each monitor can follow
   the others or have its own button. More options take your own clock
   format and the spacing.
-- Action Center: quick settings across the top, notifications on the left,
-  the calendar on the right, in one popup that opens on the monitor you
-  clicked. Width, column sides and sections (weather, world clocks...) are
-  settings. Super+V / Super+M / Super+S open it on the monitor under the
-  pointer; a click on a notification banner opens it too, or activates the
-  notification if you prefer.
+- Action Center: quick settings, notifications and the calendar in one
+  popup that opens on the monitor you clicked. The layout is yours: in the
+  preferences, drag its blocks (quick settings, notifications, today, month
+  calendar, events, world clocks, weather) into rows and columns on a mock
+  of the popup, hide the ones you don't want, and stretch, center or dock
+  each block, column and row. The width is a setting too. Super+V /
+  Super+M / Super+S open it on the monitor under the pointer; a click on a
+  notification banner opens it too, or activates the notification if you
+  prefer.
 - Tray on every monitor: with Dash to Panel's bars on several monitors,
   the tray icons (AppIndicator, Vitals and others) show on every bar and
   their menus open there.

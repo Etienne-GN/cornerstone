@@ -45,12 +45,52 @@ export function indicatorLabel(name) {
   return extension ? `${extension[1]}${extension[2] ?? ''}` : name
 }
 
-export const SECTIONS = [
-  ['quick-settings', () => _('Quick settings')],
-  ['notifications', () => _('Notifications and media')],
-  ['today', () => _('Today')],
-  ['calendar', () => _('Month calendar')],
-  ['events', () => _('Events')],
-  ['world-clocks', () => _('World clocks')],
-  ['weather', () => _('Weather')],
+// Per Action Center block: its name, icon and, for the blocks GNOME only
+// shows when there is something in them, when that is.
+export const BLOCK_LABELS = {
+  'quick-settings': [() => _('Quick settings'), 'emblem-system-symbolic'],
+  notifications: [
+    () => _('Notifications and media'),
+    'preferences-system-notifications-symbolic',
+  ],
+  today: [() => _('Today'), 'daytime-sunrise-symbolic'],
+  calendar: [() => _('Month calendar'), 'x-office-calendar-symbolic'],
+  events: [
+    () => _('Events'),
+    'appointment-soon-symbolic',
+    () => _('Shown when a calendar account is set up.'),
+  ],
+  'world-clocks': [
+    () => _('World clocks'),
+    'preferences-system-time-symbolic',
+    () => _('Shown when GNOME Clocks is installed.'),
+  ],
+  weather: [
+    () => _('Weather'),
+    'weather-few-clouds-symbolic',
+    () => _('Shown when GNOME Weather is installed.'),
+  ],
+}
+
+// In the order of the values in actionCenter/layout.js.
+export const BLOCK_ALIGNS = [
+  ['fill', () => _('Stretched')],
+  ['start', () => _('Docked left')],
+  ['center', () => _('Centered')],
+  ['end', () => _('Docked right')],
+]
+export const COLUMN_WIDTHS = [
+  ['fill', () => _('Share the free width')],
+  ['fit', () => _('Fit the content')],
+]
+export const COLUMN_VALIGNS = [
+  ['start', () => _('Top')],
+  ['center', () => _('Centered')],
+  ['end', () => _('Bottom')],
+  ['fill', () => _('Stretched')],
+]
+export const ROW_ALIGNS = [
+  ['center', () => _('Centered')],
+  ['start', () => _('Docked left')],
+  ['end', () => _('Docked right')],
 ]

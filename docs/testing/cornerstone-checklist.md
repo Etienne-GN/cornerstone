@@ -71,9 +71,11 @@ date '+%F %T' | tee ~/cornerstone-check-start.txt
   changes, and it keeps them after unplugging and replugging the monitor
   or restarting Dash to Panel. Turn its own settings off: it looks like
   the others again.
-- Action Center page: width (and fit to content), calendar on the left,
-  hide sections (weather, world clocks...). The popup follows next time it
-  opens.
+- Action Center page: drag blocks in the layout mock to a new column, a
+  new row and the hidden blocks; click a block and set it stretched,
+  centered or docked, its column's width and height, its row's place; the
+  move buttons; Reset. Width (and fit to content). The popup follows next
+  time it opens.
 
 ## 5. Dash to Panel together
 

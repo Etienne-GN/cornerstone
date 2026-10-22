@@ -1,6 +1,6 @@
 /*
  * Hosts GNOME Shell's own quick settings grid, message list and calendar
- * column in one popup. The open/dim/offset logic replicates GNOME Shell's
+ * widgets in one popup, laid out by the action-center-layout key. The open/dim/offset logic replicates GNOME Shell's
  * dateMenu.js and quickSettings.js (GPL-2.0-or-later).
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 import Clutter from 'gi://Clutter'
 import Cogl from 'gi://Cogl'
 import GLib from 'gi://GLib'
+import GObject from 'gi://GObject'
 import Graphene from 'gi://Graphene'
 import Meta from 'gi://Meta'
 import St from 'gi://St'
@@ -29,6 +30,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js'
 import { POPUP_ANIMATION_TIME } from 'resource:///org/gnome/shell/ui/quickSettings.js'
 
 import { menuClose, menuOpen, verticalBoxProps } from '../compat.js'
+import { BLOCKS, LAYOUT_KEY, parseLayout, WIDTH_BLOCKS } from './layout.js'
 import { ActionCenterRouter, InstanceOverrides } from './router.js'
 import { WidgetMover } from './widgetMover.js'
 
@@ -37,27 +39,56 @@ const DIM_BRIGHTNESS = -0.4
 const DIM_PROPERTY = '@effects.dim.brightness'
 const ENABLED_KEY = 'action-center'
 const WIDTH_KEY = 'action-center-width'
-const SWAP_KEY = 'action-center-swap'
-const HIDDEN_KEY = 'action-center-hidden-sections'
 
-// Sections that can be hidden, and the GNOME widgets each one hides. The
-// quick settings and notifications are whole hosts of the popup.
-export const SECTIONS = [
-  'quick-settings',
-  'notifications',
-  'today',
-  'calendar',
-  'events',
-  'world-clocks',
-  'weather',
-]
-const SECTION_WIDGETS = {
+// The dateMenu.js widget each block hosts; quick settings hosts the grid.
+// In the order of their GNOME parents, so a restore finds each sibling.
+const DATE_BLOCKS = {
+  notifications: '_messageList',
   today: '_date',
   calendar: '_calendar',
   events: '_eventsItem',
   'world-clocks': '_clocksItem',
   weather: '_weatherItem',
 }
+const HOST_STYLES = {
+  'quick-settings': 'cornerstone-action-center-quick-settings',
+  notifications: 'cornerstone-action-center-messages',
+}
+// The message list scrolls itself and takes the height left.
+const GROWS = 'notifications'
+
+const ALIGN = {
+  fill: Clutter.ActorAlign.FILL,
+  start: Clutter.ActorAlign.START,
+  center: Clutter.ActorAlign.CENTER,
+  end: Clutter.ActorAlign.END,
+}
+
+// Like dateMenu.js's CalendarColumnLayout: the width comes from the shown
+// `sizers` when there are any, and the other blocks wrap to it.
+const ColumnLayout = GObject.registerClass(
+  class ColumnLayout extends Clutter.BoxLayout {
+    _init(sizers) {
+      super._init(verticalBoxProps())
+      this._sizers = sizers
+    }
+
+    vfunc_get_preferred_width(container, forHeight) {
+      const sizers = this._sizers.filter(
+        (a) => a.visible && a.get_parent() === container,
+      )
+      if (!sizers.length)
+        return super.vfunc_get_preferred_width(container, forHeight)
+      return sizers.reduce(
+        ([minAcc, natAcc], child) => {
+          const [min, nat] = child.get_preferred_width(forHeight)
+          return [Math.max(minAcc, min), Math.max(natAcc, nat)]
+        },
+        [0, 0],
+      )
+    }
+  },
+)
 
 class ActionCenterMenu extends PopupMenu.PopupMenu {
   constructor(qsMenu) {
@@ -89,50 +120,109 @@ class ActionCenterMenu extends PopupMenu.PopupMenu {
     })
     this.box.add_child(this.content)
 
-    // Quick settings across the top; notifications and the calendar side
-    // by side below.
-    this.qsHost = this._addHost(
-      this.content,
-      'cornerstone-action-center-quick-settings',
-      false,
-    )
-    this.columns = new St.BoxLayout({
-      style_class: 'cornerstone-action-center-columns',
-      x_expand: true,
-      y_expand: true,
-    })
-    this.content.add_child(this.columns)
-    this.messagesHost = this._addHost(
-      this.columns,
-      'cornerstone-action-center-messages',
-      true,
-    )
-    this.calendarHost = this._addHost(
-      this.columns,
-      'cornerstone-action-center-calendar',
-      false,
-    )
-    this.calendarHost.x_expand = false
+    // One host per block for the menu's life; setLayout() moves them
+    // between columns. Hidden ones wait in a hidden box that stays on
+    // stage: GNOME keeps updating their widgets, and an off-stage widget
+    // has no theme node to style them with.
+    this._hiddenBox = new St.Widget({ visible: false })
+    this.actor.add_child(this._hiddenBox)
+    this.blockHosts = {}
+    for (const id of BLOCKS) {
+      const host = new St.BoxLayout({
+        style_class: `cornerstone-action-center-block ${
+          HOST_STYLES[id] ?? `cornerstone-action-center-${id}`
+        }`,
+        x_expand: true,
+        y_expand: id === GROWS,
+        ...verticalBoxProps(),
+      })
+      host.connect('notify::visible', () => this.syncVisibility())
+      this.blockHosts[id] = host
+    }
+    this.rows = []
+    this._layout = null
   }
 
-  _addHost(parent, styleClass, yExpand) {
-    const host = new St.BoxLayout({
-      style_class: styleClass,
-      x_expand: true,
-      y_expand: yExpand,
-      ...verticalBoxProps(),
+  // `layout` is a parseLayout() result. Returns whether the rows were
+  // rebuilt.
+  setLayout(layout) {
+    const key = JSON.stringify(layout)
+    if (key === this._layout) return false
+    this._layout = key
+
+    for (const host of Object.values(this.blockHosts)) {
+      host.get_parent()?.remove_child(host)
+      this._hiddenBox.add_child(host)
+    }
+    for (const row of this.content.get_children()) row.destroy()
+
+    this.rows = layout.rows.map((row) => {
+      // A filling column takes the extra width; without one the row keeps
+      // its natural width and `align` places it.
+      const fills = row.columns.some((c) => c.width === 'fill')
+      const rowBox = new St.BoxLayout({
+        style_class: 'cornerstone-action-center-row',
+        x_expand: true,
+        x_align: fills ? Clutter.ActorAlign.FILL : ALIGN[row.align],
+      })
+      const columns = row.columns.map((column) => {
+        const actor = this._column(column)
+        rowBox.add_child(actor)
+        return actor
+      })
+      rowBox.y_expand = columns.some((c) => c.y_expand)
+      this.content.add_child(rowBox)
+      return { actor: rowBox, columns }
     })
-    parent.add_child(host)
-    return host
+    this.syncVisibility()
+    return true
   }
 
-  // Notifications on the left by default, the calendar on the right.
-  setSwapped(swapped) {
-    const [first, second] = swapped
-      ? [this.calendarHost, this.messagesHost]
-      : [this.messagesHost, this.calendarHost]
-    this.columns.set_child_at_index(first, 0)
-    this.columns.set_child_at_index(second, 1)
+  _column({ width, valign, blocks }) {
+    const hosts = blocks.map(({ id, align }) => {
+      const host = this.blockHosts[id]
+      host.x_align = ALIGN[align]
+      this._hiddenBox.remove_child(host)
+      return host
+    })
+    const sizers = blocks
+      .filter(({ id }) => WIDTH_BLOCKS.includes(id))
+      .map(({ id }) => this.blockHosts[id])
+    const layoutManager = new ColumnLayout(sizers)
+    const box = new St.Viewport({
+      style_class: 'cornerstone-action-center-column',
+      layout_manager: layoutManager,
+      x_expand: true,
+    })
+    layoutManager.hookup_style(box)
+    for (const host of hosts) box.add_child(host)
+
+    // Beside the message list the column takes the row's height; elsewhere
+    // it scrolls, as the calendar column's displays do in dateMenu.js.
+    const grows = blocks.some(({ id }) => id === GROWS)
+    const actor = grows
+      ? box
+      : new St.ScrollView({
+          style_class: 'cornerstone-action-center-scroll vfade',
+          overlay_scrollbars: true,
+          hscrollbar_policy: St.PolicyType.NEVER,
+          vscrollbar_policy: St.PolicyType.AUTOMATIC,
+          child: box,
+        })
+    actor._cornerstoneHosts = hosts
+    actor.x_expand = width === 'fill'
+    actor.y_expand = grows
+    actor.y_align = ALIGN[valign]
+    return actor
+  }
+
+  // A column or row with nothing shown would still take the spacing.
+  syncVisibility() {
+    for (const row of this.rows ?? []) {
+      for (const column of row.columns)
+        column.visible = column._cornerstoneHosts.some((h) => h.visible)
+      row.actor.visible = row.columns.some((c) => c.visible)
+    }
   }
 
   // 0 lets the popup take its natural width.
@@ -171,6 +261,7 @@ class ActionCenterMenu extends PopupMenu.PopupMenu {
   destroy() {
     this._boxPointer.remove_transition(DIM_PROPERTY)
     this._dimEffect = null
+    this.rows = null
     super.destroy()
   }
 }
@@ -242,7 +333,6 @@ export class ActionCenter {
 
     this._dateMenu = dateMenu
     this._qsMenu = qsMenu
-    this._calendarColumn = dateMenu._calendar.get_parent()
 
     if (dateMenu.menu.isOpen) menuClose(dateMenu.menu, { animate: false })
     if (qsMenu.isOpen) menuClose(qsMenu, { animate: false })
@@ -266,21 +356,32 @@ export class ActionCenter {
       this,
     )
 
-    this._mover.move(qsMenu._grid, menu.qsHost)
+    this._mover.move(qsMenu._grid, menu.blockHosts['quick-settings'])
     this._mover.move(qsMenu._overlay, menu.actor)
-    this._mover.move(dateMenu._messageList, menu.messagesHost)
-    this._mover.move(this._calendarColumn, menu.calendarHost)
+    // A block's host shows while GNOME shows its widget: dateMenu.js hides
+    // events, clocks and weather that have nothing to show.
+    this._bindings = []
+    for (const [id, field] of Object.entries(DATE_BLOCKS)) {
+      const widget = dateMenu[field]
+      if (!widget) continue
+      const host = menu.blockHosts[id]
+      this._mover.move(widget, host)
+      this._bindings.push(
+        widget.bind_property(
+          'visible',
+          host,
+          'visible',
+          GObject.BindingFlags.SYNC_CREATE,
+        ),
+      )
+    }
 
     this._bindOverlay()
 
-    // Hidden sections wait here, off stage, until shown or restored.
-    this._holder = new St.Widget({ visible: false })
     this._settings.connectObject(
       `changed::${WIDTH_KEY}`,
       () => this._syncLayout(),
-      `changed::${SWAP_KEY}`,
-      () => this._syncLayout(),
-      `changed::${HIDDEN_KEY}`,
+      `changed::${LAYOUT_KEY}`,
       () => this._syncLayout(),
       this,
     )
@@ -316,19 +417,20 @@ export class ActionCenter {
     this._step('overlay constraints', () => this._unbindOverlay())
     this._step('dim override', () => this._injections.clear())
     this._settings.disconnectObject(this)
+    this._step('visibility bindings', () => {
+      for (const binding of this._bindings ?? []) binding.unbind()
+    })
+    this._bindings = null
     this._step('widgets', () => this._mover.restoreAll())
-    this._step('section holder', () => this._holder?.destroy())
-    this._holder = null
 
     // Never let menu.destroy() take a GNOME widget with it.
     this._step('safety pass', () => {
       for (const actor of [
         qsMenu._grid,
         qsMenu._overlay,
-        dateMenu._messageList,
-        this._calendarColumn,
+        ...Object.values(DATE_BLOCKS).map((field) => dateMenu[field]),
       ]) {
-        if (!menu.actor.contains(actor)) continue
+        if (!actor || !menu.actor.contains(actor)) continue
         console.error(
           '[cornerstone] action center: widget still hosted after restore',
           new Error(String(actor)),
@@ -353,26 +455,16 @@ export class ActionCenter {
     this._injections = null
     this._qsMenu = null
     this._dateMenu = null
-    this._calendarColumn = null
   }
 
   _syncLayout() {
     const menu = this._menu
     menu.setWidth(this._settings.get_int(WIDTH_KEY))
-    menu.setSwapped(this._settings.get_boolean(SWAP_KEY))
-
-    const hidden = new Set(this._settings.get_strv(HIDDEN_KEY))
-    menu.qsHost.visible = !hidden.has('quick-settings')
-    menu.messagesHost.visible = !hidden.has('notifications')
-    for (const [section, field] of Object.entries(SECTION_WIDGETS)) {
-      const widget = this._dateMenu[field]
-      if (!widget) continue
-      if (hidden.has(section)) this._mover.move(widget, this._holder)
-      else if (this._mover.isMoved(widget)) this._mover.restore(widget)
-    }
-    menu.calendarHost.visible = Object.keys(SECTION_WIDGETS).some(
-      (section) => !hidden.has(section),
-    )
+    // The old columns go with a rebuild: stop watching them first.
+    this._unwatchOffsets()
+    menu.setLayout(parseLayout(this._settings.get_string(LAYOUT_KEY)))
+    this._watchOffsets()
+    this._queueOffsets()
   }
 
   open(sourceActor, { animate = true } = {}) {
@@ -494,19 +586,34 @@ export class ActionCenter {
       })
       overlay.add_constraint(constraint)
       this._ownConstraints.push([constraint, axis])
-      for (const actor of this._offsetWatched())
-        actor.connectObject(`notify::${axis}`, () => this._queueOffsets(), this)
+    }
+    this._watchOffsets()
+  }
+
+  // Every actor between the grid and the boxpointer moves the overlay, and
+  // so does scrolling a column that holds it.
+  _watchOffsets() {
+    this._unwatchOffsets()
+    this._offsetWatched = []
+    const queue = () => this._queueOffsets()
+    const boxPointer = this._menu._boxPointer
+    for (
+      let actor = this._qsMenu._grid;
+      actor && actor !== boxPointer;
+      actor = actor.get_parent()
+    ) {
+      actor.connectObject('notify::x', queue, 'notify::y', queue, this)
+      this._offsetWatched.push(actor)
+      if (actor instanceof St.ScrollView) {
+        actor.vadjustment.connectObject('notify::value', queue, this)
+        this._offsetWatched.push(actor.vadjustment)
+      }
     }
   }
 
-  _offsetWatched() {
-    return [
-      this._qsMenu._grid,
-      this._menu.qsHost,
-      this._menu.content,
-      this._menu.box,
-      this._menu._boxPointer.bin,
-    ]
+  _unwatchOffsets() {
+    for (const actor of this._offsetWatched ?? []) actor.disconnectObject(this)
+    this._offsetWatched = null
   }
 
   // Also queued on open: while the popup is hidden nothing is allocated and
@@ -535,7 +642,7 @@ export class ActionCenter {
       global.compositor.get_laters().remove(this._offsetLater)
     this._offsetLater = 0
 
-    for (const actor of this._offsetWatched()) actor.disconnectObject(this)
+    this._unwatchOffsets()
 
     const overlay = this._qsMenu._overlay
     overlay.clear_constraints()

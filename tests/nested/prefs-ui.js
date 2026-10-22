@@ -144,7 +144,9 @@ async function checkButtonPage() {
     page.ownRow.active = true
     assert(page._clockGroup.sensitive, 'editable with own settings')
     page._formatRow.selected = 1
-    const overrides = JSON.parse(settings.get_string('button-monitor-overrides'))
+    const overrides = JSON.parse(
+      settings.get_string('button-monitor-overrides'),
+    )
     assert(
       overrides[key]?.['clock-format'] === CLOCK_PRESETS[1],
       `override written: ${JSON.stringify(overrides)}`,
@@ -198,13 +200,64 @@ async function checkActionCenterPage() {
   page.widthRow.value = 900
   assert(settings.get_int('action-center-width') === 900, 'width follows')
 
-  page.sectionRows.weather.active = false
+  const editor = page.layoutEditor
+  const layout = () =>
+    JSON.parse(settings.get_string('action-center-layout') || 'null')
+  const tile = (id) => editor._tiles[id]
   assert(
-    settings.get_strv('action-center-hidden-sections').includes('weather'),
+    Object.keys(editor._tiles).length === 7 && !editor.tray.visible,
+    'every block in the mock, none hidden',
+  )
+  assert(!editor.alignRow.visible, 'no options before a block is selected')
+
+  editor.select('calendar')
+  assert(tile('calendar').has_css_class('selected'), 'selected tile marked')
+  assert(
+    editor.alignRow.visible && editor.widthRow.selected === 1,
+    'calendar column fits its content',
+  )
+  assert(
+    !editor.rowAlignRow.sensitive,
+    'row placement off while a column shares the width',
+  )
+  editor.alignRow.selected = 2
+  assert(
+    layout().rows[1].columns[1].blocks[1].align === 'center',
+    `calendar centred: ${settings.get_string('action-center-layout')}`,
+  )
+  assert(tile('calendar').halign === Gtk.Align.CENTER, 'mock follows')
+
+  editor.select('quick-settings')
+  editor.widthRow.selected = 1
+  assert(editor.rowAlignRow.sensitive, 'row placement on with a fitted column')
+  editor.rowAlignRow.selected = 2
+  assert(layout().rows[0].align === 'end', 'top row docked right')
+  assert(!editor._moveButtons.up.sensitive, 'quick settings cannot go up')
+  editor._moveButtons.down.emit('clicked')
+  assert(
+    layout().rows[1].columns[0].blocks[0].id === 'quick-settings',
+    'quick settings moved below the second row',
+  )
+
+  editor.select('weather')
+  editor._visibilityButton.emit('clicked')
+  assert(
+    !settings.get_string('action-center-layout').includes('weather'),
     'weather hidden',
   )
+  assert(editor.tray.visible && tile('weather'), 'weather in the tray')
+  assert(!editor.alignRow.visible, 'a hidden block has no placement')
+  editor._visibilityButton.emit('clicked')
+  assert(
+    settings.get_string('action-center-layout').includes('weather'),
+    'weather shown again',
+  )
+
   resetAll()
-  assert(page.sectionRows.weather.active, 'rows follow a reset')
+  assert(
+    Object.keys(editor._tiles).length === 7 && !editor.tray.visible,
+    'the mock follows a reset',
+  )
   page.destroy()
 }
 
@@ -232,12 +285,19 @@ async function checkTrayPage() {
 }
 
 async function showWindow() {
-  const window = new Adw.PreferencesWindow({ default_width: 720, default_height: 1000 })
+  const window = new Adw.PreferencesWindow({
+    default_width: 720,
+    default_height: 1000,
+  })
   const pages = [
     new ButtonPage(settings),
     new ActionCenterPage(settings),
     new TrayPage(settings),
-    new AboutPage({ name: 'Cornerstone', version: 1, url: 'https://github.com/Etienne-GN/cornerstone' }),
+    new AboutPage({
+      name: 'Cornerstone',
+      version: 1,
+      url: 'https://github.com/Etienne-GN/cornerstone',
+    }),
   ]
   for (const { page } of pages) window.add(page)
   window.present()

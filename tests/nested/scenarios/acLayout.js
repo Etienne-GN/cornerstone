@@ -1,4 +1,5 @@
 import Shell from 'gi://Shell'
+import St from 'gi://St'
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js'
@@ -62,50 +63,100 @@ function box(actor) {
   return { x, y, w, h }
 }
 
+// The actor of the column holding `id`: its scroll view when it has one.
+function columnOf(id) {
+  const box = menu().blockHosts[id].get_parent()
+  return box?.get_parent() instanceof St.ScrollView ? box.get_parent() : box
+}
+
 function measure() {
   const m = menu()
   const area = Main.layoutManager.getWorkAreaForMonitor(
     Main.layoutManager.findIndexForActor(ac()._source),
   )
+  const calendarBox = m.blockHosts.calendar.get_parent()
   const metrics = {
     workArea: area.height,
     popup: height(boxPointer()),
     content: box(m.content),
-    qs: box(m.qsHost),
-    messages: box(m.messagesHost),
-    calendar: box(m.calendarHost),
-    calendarNatural: natural(m.calendarHost),
+    qs: box(m.blockHosts['quick-settings']),
+    messages: box(m.blockHosts.notifications),
+    calendar: box(columnOf('calendar')),
+    calendarNatural: natural(calendarBox),
   }
   console.log(`[cornerstone-test] layout ${JSON.stringify(metrics)}`)
   return metrics
 }
 
-// Quick settings across the top, notifications and calendar side by side
-// below, the popup within the work area.
-function assertLayout(what, metrics, { swapped = false } = {}) {
-  const { workArea, popup, content, qs, messages, calendar } = metrics
+// The three groups of the old fixed layout, as layout columns.
+const GROUPS = {
+  qs: { width: 'fill', valign: 'start', blocks: ['quick-settings'] },
+  messages: { width: 'fill', valign: 'fill', blocks: ['notifications'] },
+  calendar: {
+    width: 'fit',
+    valign: 'start',
+    blocks: ['today', 'calendar', 'events', 'world-clocks', 'weather'],
+  },
+}
+
+// Rows of group names as an action-center-layout value.
+function layoutOf(rows, align = 'center') {
+  return JSON.stringify({
+    rows: rows.map((names) => ({
+      align,
+      columns: names.map((name) => GROUPS[name]),
+    })),
+  })
+}
+
+// `rows` of group names: the first across the top, the other two side by
+// side below, in order; the popup within the work area.
+function assertLayout(what, metrics, rows) {
+  const [[topName], [leftName, rightName]] = rows
+  const { workArea, popup, content } = metrics
+  const [top, left, right] = [topName, leftName, rightName].map(
+    (name) => metrics[name],
+  )
   assert(popup <= workArea, `${what}: popup ${popup} taller than ${workArea}`)
+  if (topName === 'calendar') {
+    // Alone on its row the calendar keeps its width, in the middle.
+    const middle = top.x + top.w / 2
+    assert(
+      Math.abs(middle - (content.x + content.w / 2)) <= SLACK,
+      `${what}: calendar centred at ${middle}, content ${content.x}+${content.w}`,
+    )
+  } else {
+    assert(
+      Math.abs(top.w - content.w) <= SLACK,
+      `${what}: ${topName} ${top.w} wide, content ${content.w}`,
+    )
+  }
   assert(
-    Math.abs(qs.w - content.w) <= SLACK,
-    `${what}: quick settings ${qs.w} wide, content ${content.w}`,
+    left.y >= top.y + top.h && right.y >= top.y + top.h,
+    `${what}: ${leftName} and ${rightName} are not below ${topName}`,
   )
   assert(
-    messages.y >= qs.y + qs.h && calendar.y >= qs.y + qs.h,
-    `${what}: columns are not below the quick settings`,
-  )
-  assert(
-    Math.abs(messages.y - calendar.y) <= SLACK,
+    Math.abs(left.y - right.y) <= SLACK,
     `${what}: columns do not start at the same height`,
   )
-  const [left, right] = swapped ? [calendar, messages] : [messages, calendar]
   assert(
     left.x + left.w <= right.x + SLACK,
-    `${what}: columns overlap or are in the wrong order`,
+    `${what}: ${leftName} not left of ${rightName}`,
   )
   assert(
-    Math.abs(calendar.h - metrics.calendarNatural) <= SLACK ||
-      calendar.h >= metrics.calendarNatural,
-    `${what}: calendar ${calendar.h}, natural ${metrics.calendarNatural}`,
+    metrics.calendar.h >= metrics.calendarNatural - SLACK,
+    `${what}: calendar ${metrics.calendar.h}, natural ${metrics.calendarNatural}`,
+  )
+}
+
+// The toggle submenus open over the grid, wherever the layout put it.
+function assertOverlayOnGrid(what) {
+  const overlay = qsMenu()._overlay
+  const [gx, gy] = qsMenu()._grid.get_transformed_position()
+  const [ox, oy] = overlay.get_transformed_position()
+  assert(
+    Math.abs(gx - ox) <= SLACK && Math.abs(gy - oy) <= SLACK,
+    `${what}: overlay at ${ox},${oy}, grid at ${gx},${gy}`,
   )
 }
 
@@ -143,21 +194,27 @@ export async function run() {
     10000,
   )
 
-  assertLayout('with notifications', await openAndMeasure('notifications'))
+  const DEFAULT = [['qs'], ['messages', 'calendar']]
+  assertLayout(
+    'with notifications',
+    await openAndMeasure('notifications'),
+    DEFAULT,
+  )
   await captureStage('ac-notifications')
   await close()
 
   for (const source of sources) source.destroy()
   await sleep(500)
 
-  assertLayout('without notifications', await openAndMeasure('empty'))
+  assertLayout('without notifications', await openAndMeasure('empty'), DEFAULT)
   await captureStage('ac-empty')
   await close()
 
+  const SWAPPED = [['qs'], ['calendar', 'messages']]
   settings.set_int('action-center-width', 1000)
-  settings.set_boolean('action-center-swap', true)
+  settings.set_string('action-center-layout', layoutOf(SWAPPED))
   const wide = await openAndMeasure('wide and swapped')
-  assertLayout('wide and swapped', wide, { swapped: true })
+  assertLayout('wide and swapped', wide, SWAPPED)
   assert(
     Math.abs(wide.content.w - 1000) <= SLACK,
     `width setting: content ${wide.content.w} wide, want 1000`,
@@ -165,31 +222,121 @@ export async function run() {
   await captureStage('ac-wide-swapped')
   await close()
   settings.reset('action-center-width')
-  settings.reset('action-center-swap')
 
-  settings.set_strv('action-center-hidden-sections', [
-    'events',
-    'world-clocks',
-    'weather',
-    'quick-settings',
-  ])
-  await openAndMeasure('sections hidden')
+  for (const rows of [
+    [['messages'], ['calendar', 'qs']],
+    [['messages'], ['qs', 'calendar']],
+    [['calendar'], ['messages', 'qs']],
+    [['calendar'], ['qs', 'messages']],
+  ]) {
+    const what = rows.flat().join(', ')
+    settings.set_string('action-center-layout', layoutOf(rows))
+    assertLayout(what, await openAndMeasure(what), rows)
+    assertOverlayOnGrid(what)
+    await captureStage(`ac-${rows.flat().join('-')}`)
+    await close()
+  }
+
+  // Three columns side by side.
+  settings.set_string(
+    'action-center-layout',
+    layoutOf([['calendar', 'messages', 'qs']]),
+  )
+  {
+    const m = await openAndMeasure('three columns')
+    assert(
+      Math.abs(m.calendar.y - m.messages.y) <= SLACK &&
+        Math.abs(m.messages.y - m.qs.y) <= SLACK,
+      'three columns: not on one row',
+    )
+    assert(
+      m.calendar.x + m.calendar.w <= m.messages.x + SLACK &&
+        m.messages.x + m.messages.w <= m.qs.x + SLACK,
+      'three columns: not left to right',
+    )
+    assertOverlayOnGrid('three columns')
+    await captureStage('ac-three-columns')
+    await close()
+  }
+
+  // A fitted row docked right, a block centred in a stretched column, and
+  // the grid scrolled with the calendar in one column.
+  settings.set_int('action-center-width', 1000)
+  settings.set_string(
+    'action-center-layout',
+    JSON.stringify({
+      rows: [
+        {
+          align: 'end',
+          columns: [{ width: 'fit', blocks: ['calendar'] }],
+        },
+        {
+          columns: [
+            {
+              width: 'fill',
+              blocks: [{ id: 'today', align: 'center' }, 'quick-settings'],
+            },
+            { width: 'fill', valign: 'fill', blocks: ['notifications'] },
+          ],
+        },
+      ],
+    }),
+  )
+  {
+    const m = await openAndMeasure('docked and centred')
+    const calendar = box(columnOf('calendar'))
+    assert(
+      Math.abs(calendar.x + calendar.w - (m.content.x + m.content.w)) <= SLACK,
+      `docked right: calendar ends at ${calendar.x + calendar.w}, content at ${m.content.x + m.content.w}`,
+    )
+    const today = box(menu().blockHosts.today)
+    const column = box(columnOf('today'))
+    assert(
+      Math.abs(today.x + today.w / 2 - (column.x + column.w / 2)) <= SLACK &&
+        today.w < column.w - SLACK,
+      `centred: today ${today.x}+${today.w}, column ${column.x}+${column.w}`,
+    )
+    assertOverlayOnGrid('grid below today')
+    await captureStage('ac-docked')
+    await close()
+  }
+  settings.reset('action-center-width')
+  settings.reset('action-center-layout')
+  assertLayout('back to the default', await openAndMeasure('back'), DEFAULT)
+  assertOverlayOnGrid('back to the default')
+  await close()
+
+  // Blocks left out of the layout are hidden.
+  settings.set_string(
+    'action-center-layout',
+    JSON.stringify({
+      rows: [{ columns: [{ blocks: ['notifications', 'today', 'calendar'] }] }],
+    }),
+  )
+  await openAndMeasure('blocks hidden')
   const m = menu()
-  assert(!m.qsHost.visible, 'quick settings hidden')
-  assert(m.calendarHost.visible, 'calendar still shown')
   const dateMenu = Main.panel.statusArea.dateMenu
+  assert(!m.blockHosts['quick-settings'].mapped, 'quick settings hidden')
   assert(!dateMenu._weatherItem.mapped, 'weather hidden')
   assert(dateMenu._calendar.mapped, 'month grid shown')
-  await captureStage('ac-sections')
+  await captureStage('ac-blocks-hidden')
   await close()
-  settings.reset('action-center-hidden-sections')
 
+  // Disabled with blocks hidden: every widget back in the date menu.
   await disable()
+  for (const [name, actor, home] of [
+    ['today', dateMenu._date, dateMenu.menu.box],
+    ['calendar', dateMenu._calendar, dateMenu.menu.box],
+    ['weather', dateMenu._weatherItem, dateMenu.menu.box],
+    ['grid', qsMenu()._grid, qsMenu().box],
+  ])
+    assert(home.contains(actor), `${name} not back in GNOME after disable`)
   assert(
-    dateMenu._weatherItem.get_parent() !== null &&
-      !ac(),
-    'weather back in the date menu after disable',
+    dateMenu._date.get_next_sibling() === dateMenu._calendar,
+    'today above the month grid again',
   )
+  assert(!ac(), 'action center gone')
+  settings.reset('action-center-layout')
   await enable()
   done('acLayout')
 }

@@ -58,6 +58,20 @@ tray, prefs, static-copy (clipboard-history), spike-slot. 115 unit tests.
 Sweep after these: every scenario passes, `routing` and `teardown`
 included. 120 unit tests.
 
+- Hidden dash-to-panel slots ask for no room (`Slots.hide()` sets a 0x0
+  size): dash-to-panel sizes elements from their preferred size, shown
+  or not.
+- Action Center layout editor: `action-center-layout` (JSON rows of
+  columns of blocks, `src/actionCenter/layout.js`) replaces
+  `action-center-swap` and `action-center-hidden-sections`. Each block
+  (quick settings, notifications, today, calendar, events, world clocks,
+  weather) is its own GNOME widget in its own host; hidden hosts wait in a
+  hidden box that stays on stage (an off-stage grid crashed the shell).
+  Columns without the message list scroll. The Action Center page shows a
+  drag-and-drop mock (`src/prefs/layoutEditor.js`) with block, column and
+  row options, move buttons and a hidden tray. `acLayout`, `actionCenter`,
+  `prefs`, `button`, `smoke` and `teardown` pass; 132 unit tests.
+
 ## Known gaps
 
 - The overflow and tray on vertical bars were not captured; the button
