@@ -14,6 +14,24 @@ function readMetadata() {
 }
 
 export const UUID = readMetadata().uuid
+
+// Cornerstone's settings, usable before the extension is enabled.
+export function cornerstoneSettings() {
+  const dir = GLib.getenv('CORNERSTONE_EXT_DIR')
+  const source = Gio.SettingsSchemaSource.new_from_directory(
+    `${dir}/schemas`,
+    Gio.SettingsSchemaSource.get_default(),
+    false,
+  )
+  const schema = source.lookup(readMetadata()['settings-schema'], false)
+  return new Gio.Settings({ settings_schema: schema })
+}
+
+// Scenarios written for GNOME's clock and system menu next to each other
+// turn the one button off before enabling.
+export function useClassicLayout() {
+  cornerstoneSettings().set_boolean('one-button', false)
+}
 export const MONITORS = Number(GLib.getenv('NESTED_MONITORS') ?? 1)
 export const VERTICAL = GLib.getenv('NESTED_VERTICAL') === '1'
 export const DTP = GLib.getenv('NESTED_DTP') === '1'

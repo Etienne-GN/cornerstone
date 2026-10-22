@@ -1,0 +1,157 @@
+// The one button: placed on every bar in the date menu slot, the system
+// menu slot hidden, following dash-to-panel rebuilds and restarts, and
+// restoring both slots when turned off or disabled.
+//
+// Run with --monitors 2, and with --no-dtp for GNOME's top bar.
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js'
+import { ExtensionState } from 'resource:///org/gnome/shell/misc/extensionUtils.js'
+
+import {
+  DTP,
+  DTP_UUID,
+  MONITORS,
+  assert,
+  assertSlotsRestored,
+  bars,
+  captureStage,
+  disable,
+  done,
+  dtpSettings,
+  enable,
+  ext,
+  sleep,
+  statusAreas,
+  waitFor,
+} from '../lib.js'
+
+const oneButton = () => ext().stateObj.oneButton
+const settings = () => ext().stateObj.getSettings()
+const ac = () => ext().stateObj.actionCenter
+
+function buttonIn(area) {
+  const child = area.dateMenu?.container.get_child()
+  const button = child?.child
+  return button?._cornerstoneButton ? button : null
+}
+
+function assertPlaced(what) {
+  const areas = statusAreas()
+  for (const [i, area] of areas.entries()) {
+    const button = buttonIn(area)
+    assert(button, `${what}: no button in date menu slot #${i}`)
+    assert(button.mapped, `${what}: button #${i} not mapped`)
+    const [w, h] = button.get_transformed_size()
+    assert(w > 0 && h > 0, `${what}: button #${i} has no size`)
+    assert(
+      !area.quickSettings?.container.visible,
+      `${what}: system menu slot #${i} visible`,
+    )
+  }
+  return areas.map(buttonIn)
+}
+
+async function setDtp(enabled) {
+  if (enabled) Main.extensionManager.enableExtension(DTP_UUID)
+  else Main.extensionManager.disableExtension(DTP_UUID)
+  const want = enabled ? ExtensionState.ACTIVE : ExtensionState.INACTIVE
+  await waitFor(() => Main.extensionManager.lookup(DTP_UUID).state === want)
+}
+
+export async function run() {
+  await bars()
+  await enable()
+  await waitFor(() => oneButton()?.isActive)
+  await sleep(300)
+
+  let buttons = assertPlaced('enabled')
+  assert(
+    buttons.length === (DTP ? MONITORS : 1),
+    `expected one button per bar, got ${buttons.length}`,
+  )
+  const [first] = buttons
+  const clock = first._elements.clock
+  const strip = first._elements.indicators
+  assert(clock.text.length > 0, 'clock shows text')
+  assert(
+    strip.get_children().some((c) => c.visible),
+    'at least one system indicator shown',
+  )
+  console.log(`[cornerstone-test] clock "${clock.text}", indicators ` +
+    strip.get_children().filter((c) => c.visible).map((c) => c._cornerstoneIndicator))
+  await captureStage('1-buttons')
+
+  const last = buttons.at(-1)
+  last._activate(last)
+  await waitFor(() => ac().isOpen)
+  assert(ac()._source === last, 'Action Center anchored to the clicked button')
+  assert(last.has_style_pseudo_class('active'), 'button shows :active')
+  await sleep(300)
+  await captureStage('2-open')
+  last._activate(last)
+  await waitFor(() => !ac().isOpen)
+
+  const s = settings()
+  s.set_string('clock-format', '%a %d  %H:%M:%S')
+  s.set_string('clock-font', 'Sans Bold 13')
+  s.set_strv('button-elements', ['clock', 'indicators'])
+  await sleep(1200)
+  assert(/\d\d:\d\d:\d\d$/.test(clock.text), `custom format: "${clock.text}"`)
+  assert(clock.style.includes('font-weight: 700'), `font: "${clock.style}"`)
+  assert(first._box.get_first_child() === clock, 'clock moved first')
+  const visible = strip.get_children().filter((c) => c.visible)
+  const hiddenName = visible[0]._cornerstoneIndicator
+  s.set_strv('button-hidden-indicators', [hiddenName])
+  await sleep(100)
+  assert(
+    !strip.get_children().some((c) => c._cornerstoneIndicator === hiddenName),
+    `${hiddenName} hidden`,
+  )
+  await captureStage('3-customized')
+  for (const key of [
+    'clock-format',
+    'clock-font',
+    'button-elements',
+    'button-hidden-indicators',
+  ])
+    s.reset(key)
+
+  if (DTP) {
+    dtpSettings().set_boolean('multi-monitors', false)
+    await waitFor(() => global.dashToPanel?.panels?.length === 1)
+    dtpSettings().set_boolean('multi-monitors', true)
+    await bars()
+    await sleep(300)
+    assertPlaced('after a dash-to-panel rebuild')
+
+    await setDtp(false)
+    await sleep(300)
+    assertPlaced('dash-to-panel disabled')
+    await captureStage('4-top-bar')
+    await setDtp(true)
+    await bars()
+    await sleep(300)
+    assertPlaced('dash-to-panel enabled again')
+  }
+
+  s.set_boolean('one-button', false)
+  await waitFor(() => !oneButton().isActive)
+  assertSlotsRestored('one button off')
+  s.set_boolean('one-button', true)
+  await waitFor(() => oneButton().isActive)
+  await sleep(300)
+  assertPlaced('one button on again')
+
+  s.set_boolean('action-center', false)
+  await waitFor(() => !oneButton().isActive)
+  assertSlotsRestored('Action Center off')
+  s.set_boolean('action-center', true)
+  await waitFor(() => oneButton().isActive)
+  await sleep(300)
+  assertPlaced('Action Center on again')
+
+  await disable()
+  assertSlotsRestored('after disable')
+  await captureStage('5-disabled')
+  done('button')
+}

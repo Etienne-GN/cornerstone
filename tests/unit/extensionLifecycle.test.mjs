@@ -64,6 +64,20 @@ const fakes = {
       maybeThrow('mirror controller destroy')
     }
   },
+  OneButton: class {
+    constructor() {
+      calls.push('one button')
+    }
+    get isActive() {
+      return false
+    }
+    enable() {
+      calls.push('one button enable')
+    }
+    destroy() {
+      maybeThrow('one button destroy')
+    }
+  },
   ActionCenter: class {
     constructor() {
       calls.push('action center')
@@ -91,7 +105,9 @@ test('enable builds every component and attaches the mirror', () => {
     'panel source',
     'action center',
     'mirror controller',
+    'one button',
     'panel source enable',
+    'one button enable',
     'mirror attach',
   ])
   extension.disable()
@@ -113,6 +129,7 @@ test('disable runs every teardown step when each one throws', () => {
   extension.enable()
   for (const name of [
     'panel source disconnect',
+    'one button destroy',
     'action center destroy',
     'mirror controller destroy',
   ])
@@ -122,14 +139,17 @@ test('disable runs every teardown step when each one throws', () => {
   assert.doesNotThrow(() => extension.disable())
   assert.deepEqual(calls, [
     'panel source disconnect',
+    'one button destroy',
     'action center destroy',
     'mirror controller destroy',
   ])
   assert.deepEqual(logged.map(([context]) => context), [
     '[cornerstone] disable panel source',
+    '[cornerstone] disable one button',
     '[cornerstone] disable action center',
     '[cornerstone] disable mirror controller',
   ])
+  assert.equal(extension.oneButton, null)
   assert.equal(extension.actionCenter, null)
   assert.equal(extension.mirrorController, null)
   assert.equal(extension.panels, null)

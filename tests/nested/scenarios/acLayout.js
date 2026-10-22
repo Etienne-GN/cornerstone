@@ -4,6 +4,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js'
 
 import {
+  useClassicLayout,
   assert,
   captureStage,
   disable,
@@ -105,6 +106,7 @@ async function openAndMeasure(what) {
 }
 
 export async function run() {
+  useClassicLayout()
   Main.overview.hide()
   await waitFor(() => !Main.overview.visible)
   await waitFor(() => qsMenu()._grid.get_n_children() > 1, 10000)

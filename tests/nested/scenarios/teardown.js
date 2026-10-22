@@ -2,6 +2,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import { ExtensionState } from 'resource:///org/gnome/shell/misc/extensionUtils.js'
 
 import {
+  useClassicLayout,
   MONITORS,
   assert,
   cycle,
@@ -52,6 +53,7 @@ async function mirrored() {
 }
 
 export async function run() {
+  useClassicLayout()
   assert(MONITORS === 2, `teardown needs --monitors 2, got ${MONITORS}`)
   await requireActive(ARCMENU)
   await requireActive(APPINDICATOR)

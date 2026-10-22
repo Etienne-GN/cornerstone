@@ -30,5 +30,35 @@
       <summary>Notification banner click</summary>
       <description>What clicking a notification banner does while the Action Center is on: open the Action Center, or activate the notification as GNOME does.</description>
     </key>
+    <key type="b" name="one-button">
+      <default>true</default>
+      <summary>One button</summary>
+      <description>Replace the clock and the system menu of every bar with one button that opens the Action Center.</description>
+    </key>
+    <key type="as" name="button-elements">
+      <default>['indicators', 'clock']</default>
+      <summary>Button elements</summary>
+      <description>What the button shows, in order: 'indicators' (the system indicators) and 'clock'.</description>
+    </key>
+    <key type="as" name="button-indicator-order">
+      <default>[]</default>
+      <summary>Indicator order</summary>
+      <description>System indicators listed first, in this order; the others keep GNOME's order.</description>
+    </key>
+    <key type="as" name="button-hidden-indicators">
+      <default>[]</default>
+      <summary>Hidden indicators</summary>
+      <description>System indicators the button does not show.</description>
+    </key>
+    <key type="s" name="clock-format">
+      <default>''</default>
+      <summary>Clock format</summary>
+      <description>A GLib date format (strftime style, "\n" for a second line). Empty follows GNOME's clock settings.</description>
+    </key>
+    <key type="s" name="clock-font">
+      <default>''</default>
+      <summary>Clock font</summary>
+      <description>A Pango font description for the clock. Empty uses the theme font.</description>
+    </key>
   </schema>
 </schemalist>

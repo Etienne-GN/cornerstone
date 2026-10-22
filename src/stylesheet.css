@@ -134,3 +134,8 @@
 .cornerstone-action-center-calendar .datemenu-calendar-column:rtl {
 	margin: 0;
 }
+
+/* The one button. */
+.cornerstone-button-box {
+	spacing: 8px;
+}

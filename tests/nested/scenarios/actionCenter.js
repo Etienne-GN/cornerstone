@@ -9,6 +9,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js'
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js'
 
 import {
+  useClassicLayout,
   MONITORS,
   assert,
   disable,
@@ -298,6 +299,7 @@ async function toggleSetting(ac, snap, round, popupOpen) {
 }
 
 export async function run() {
+  useClassicLayout()
   assert(MONITORS === 2, 'actionCenter needs --monitors 2')
 
   Main.overview.hide()

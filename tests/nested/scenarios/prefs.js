@@ -6,6 +6,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js'
 
 import {
+  useClassicLayout,
   MONITORS,
   assert,
   disable,
@@ -85,6 +86,7 @@ async function checkPreferencesUi() {
 }
 
 export async function run() {
+  useClassicLayout()
   const nMonitors = global.display.get_n_monitors()
   assert(nMonitors === 2, `prefs needs 2 monitors, shell sees ${nMonitors}`)
 

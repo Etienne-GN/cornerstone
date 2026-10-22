@@ -21,6 +21,7 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js'
 import { PanelSource } from './panels.js'
 import { MirrorController } from './mirror/controller.js'
 import { ActionCenter } from './actionCenter/actionCenter.js'
+import { OneButton } from './button/oneButton.js'
 
 function isolated(component, teardown) {
   try {
@@ -42,6 +43,16 @@ export default class CornerstoneExtension extends Extension {
     this._mirrorController = new MirrorController(this._settings, (actor) =>
       this._openActionCenter(actor),
     )
+
+    // The one button owns the system menu slot the mirror would take.
+    this._oneButton = new OneButton(
+      this._settings,
+      this._panels,
+      this._actionCenter,
+    )
+    this._mirrorController.skipQuickSettings = () =>
+      this._oneButton?.isActive ?? false
+    this._oneButton.onActiveChanged = () => this._mirrorController?.refresh()
     this._panels.connectObject(
       'changed',
       () => this._mirrorController?.attach(this._panels.dtpPanels),
@@ -49,6 +60,7 @@ export default class CornerstoneExtension extends Extension {
     )
 
     this._panels.enable()
+    this._oneButton.enable()
     this._mirrorController.attach(this._panels.dtpPanels)
   }
 
@@ -58,6 +70,10 @@ export default class CornerstoneExtension extends Extension {
 
   get mirrorController() {
     return this._mirrorController ?? null
+  }
+
+  get oneButton() {
+    return this._oneButton ?? null
   }
 
   get actionCenter() {
@@ -78,6 +94,8 @@ export default class CornerstoneExtension extends Extension {
       this._panels?.disconnectObject(this)
       this._panels?.disable()
     })
+    isolated('one button', () => this._oneButton?.destroy())
+    this._oneButton = null
     isolated('action center', () => this._actionCenter?.destroy())
     this._actionCenter = null
     isolated('mirror controller', () => this._mirrorController?.destroy())

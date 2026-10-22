@@ -10,6 +10,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js'
 
 import {
+  useClassicLayout,
   MONITORS,
   assert,
   disable,
@@ -216,6 +217,7 @@ function overridden(snapshot) {
 }
 
 export async function run() {
+  useClassicLayout()
   assert(MONITORS === 2, 'routing needs --monitors 2')
 
   Main.overview.hide()

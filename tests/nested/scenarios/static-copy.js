@@ -2,6 +2,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import { ExtensionState } from 'resource:///org/gnome/shell/misc/extensionUtils.js'
 
 import {
+  useClassicLayout,
   MONITORS,
   assert,
   cycle,
@@ -26,6 +27,7 @@ function clipboardMirrors(actor = global.stage, found = []) {
 }
 
 export async function run() {
+  useClassicLayout()
   assert(MONITORS === 2, `static-copy needs --monitors 2, got ${MONITORS}`)
   const extension = Main.extensionManager.lookup(CLIPBOARD)
   assert(extension, `${CLIPBOARD} missing: run with --with-extension`)

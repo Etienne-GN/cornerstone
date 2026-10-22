@@ -4,6 +4,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js'
 
 import {
+  useClassicLayout,
   assertSlotsRestored,
   MONITORS,
   assert,
@@ -52,6 +53,7 @@ async function enableAndMirror() {
 }
 
 export async function run() {
+  useClassicLayout()
   assert(MONITORS === 2, `disable-fault needs --monitors 2, got ${MONITORS}`)
   const fake = addFake()
 
