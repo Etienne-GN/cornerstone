@@ -89,7 +89,7 @@ export async function run() {
   assert(nMonitors === 2, `prefs needs 2 monitors, shell sees ${nMonitors}`)
 
   const policy = await import(
-    `file://${GLib.getenv('OMNIBAR_EXT_DIR')}/mirror/policy.js`
+    `file://${GLib.getenv('CORNERSTONE_EXT_DIR')}/mirror/policy.js`
   )
 
   await enable()

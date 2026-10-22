@@ -6,8 +6,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import { ExtensionState } from 'resource:///org/gnome/shell/misc/extensionUtils.js'
 
 function readMetadata() {
-  const dir = GLib.getenv('OMNIBAR_EXT_DIR')
-  if (!dir) throw new Error('OMNIBAR_EXT_DIR is not set; use run.sh')
+  const dir = GLib.getenv('CORNERSTONE_EXT_DIR')
+  if (!dir) throw new Error('CORNERSTONE_EXT_DIR is not set; use run.sh')
 
   const [, bytes] = GLib.file_get_contents(`${dir}/metadata.json`)
   return JSON.parse(new TextDecoder().decode(bytes))

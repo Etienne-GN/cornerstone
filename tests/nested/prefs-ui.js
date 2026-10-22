@@ -27,7 +27,7 @@ if (refusal) {
 const { default: Adw } = await import('gi://Adw?version=1')
 const { default: Gtk } = await import('gi://Gtk?version=4.0')
 
-const extDir = GLib.getenv('OMNIBAR_EXT_DIR')
+const extDir = GLib.getenv('CORNERSTONE_EXT_DIR')
 const { ActionCenterPreferences } = await import(
   `file://${extDir}/actionCenter/prefs.js`
 )

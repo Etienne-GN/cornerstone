@@ -97,7 +97,7 @@ export async function run() {
   assert(controller, 'extension exposes mirrorController')
   const settings = ext().stateObj.getSettings()
   const policy = await import(
-    `file://${GLib.getenv('OMNIBAR_EXT_DIR')}/mirror/policy.js`
+    `file://${GLib.getenv('CORNERSTONE_EXT_DIR')}/mirror/policy.js`
   )
 
   let panel = await waitFor(secondaryPanel)

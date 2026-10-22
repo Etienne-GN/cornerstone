@@ -78,6 +78,10 @@ if [[ $viewer -eq 1 ]]; then
     echo "--viewer needs a live Wayland display (WAYLAND_DISPLAY)" >&2
     exit 2
   }
+  gnome-shell --help-all 2>&1 | grep -q -- '--devkit' || {
+    echo "--viewer needs a mutter built with devkit support" >&2
+    exit 2
+  }
 fi
 
 work="$repo/.nested/$scenario"
@@ -161,16 +165,21 @@ nested_env=(
   GSETTINGS_BACKEND=keyfile
   # Keep the perf helper's window out of the shell's window list.
   MUTTER_WM_CLASS_FILTER=Gnome-shell-perf-helper
-  OMNIBAR_EXT_DIR="$ext_dir"
+  CORNERSTONE_EXT_DIR="$ext_dir"
   NESTED_MONITORS="$monitors"
   NESTED_VERTICAL="$vertical"
   NESTED_LOG="$log"
   DBUS_SYSTEM_BUS_ADDRESS="unix:path=$sysbus_sock"
 )
 
-args=(--devkit --wayland --no-x11 --unsafe-mode
-  --wayland-display cornerstone-nested)
-[[ $viewer -eq 1 ]] || args+=(--headless)
+# Only the viewer needs mutter's devkit, which some distributions build
+# without (CachyOS); headless runs do not.
+args=(--wayland --no-x11 --unsafe-mode --wayland-display cornerstone-nested)
+if [[ $viewer -eq 1 ]]; then
+  args+=(--devkit)
+else
+  args+=(--headless)
+fi
 for ((i = 0; i < monitors; i++)); do
   args+=(--virtual-monitor 1920x1080)
 done
