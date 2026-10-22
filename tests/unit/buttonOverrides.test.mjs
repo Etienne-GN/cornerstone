@@ -67,3 +67,26 @@ test('setting one value keeps the monitor\'s others', () => {
     { main: { 'clock-font': 'Sans 12', 'clock-format': '%H' } },
   )
 })
+
+test('a monitor reads its own value, else every monitor value', () => {
+  const values = {
+    'button-monitor-overrides': JSON.stringify({
+      'connector:DP-2': { 'button-overflow-indicators': ['network'] },
+    }),
+    'button-overflow-indicators': ['volumeOutput'],
+    'button-spacing': 8,
+  }
+  const settings = {
+    get_string: (key) => values[key],
+    get_strv: (key) => values[key],
+    get_int: (key) => values[key],
+  }
+  const { buttonValue } = overrides
+  const key = 'button-overflow-indicators'
+  assert.deepEqual(plain(buttonValue(settings, 'connector:DP-2', key)), [
+    'network',
+  ])
+  assert.deepEqual(plain(buttonValue(settings, 'main', key)), ['volumeOutput'])
+  assert.deepEqual(plain(buttonValue(settings, null, key)), ['volumeOutput'])
+  assert.equal(buttonValue(settings, 'connector:DP-2', 'button-spacing'), 8)
+})

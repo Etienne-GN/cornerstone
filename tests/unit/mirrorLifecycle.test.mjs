@@ -745,6 +745,10 @@ const { MirrorController } = loadGjs(controllerPath, {
   OverflowButton: class {},
   OVERFLOW_ROLE: 'cornerstone:overflow',
   SPACING_KEY: 'tray-icon-spacing',
+  OVERRIDES_KEY: 'button-monitor-overrides',
+  buttonValue: () => [],
+  indicatorNames: () => [],
+  orderIndicators: (entries) => entries,
   TraySpacing: class {
     apply() {}
     restoreAll() {}

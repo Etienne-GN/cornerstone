@@ -169,3 +169,15 @@
 	min-height: 32px;
 	border-radius: 9px;
 }
+
+/* A system indicator in the tray overflow popup. */
+.cornerstone-overflow-indicator {
+	padding: 0 8px;
+	min-height: 32px;
+	border-radius: 9px;
+}
+
+.cornerstone-overflow-indicator:hover,
+.cornerstone-overflow-indicator:focus {
+	background-color: rgba(255, 255, 255, 0.17);
+}

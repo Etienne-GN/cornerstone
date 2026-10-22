@@ -26,6 +26,7 @@ import { orderIndicators } from './order.js'
 
 const HIDDEN_KEY = 'button-hidden-indicators'
 const ORDER_KEY = 'button-indicator-order'
+const OVERFLOW_KEY = 'button-overflow-indicators'
 
 // GNOME names its indicators by QuickSettings field (_network, _volumeOutput
 // ...); extension indicators get their class name.
@@ -64,6 +65,8 @@ export const IndicatorStrip = GObject.registerClass(
         `changed::${HIDDEN_KEY}`,
         () => this._rebuild(),
         `changed::${ORDER_KEY}`,
+        () => this._rebuild(),
+        `changed::${OVERFLOW_KEY}`,
         () => this._rebuild(),
         this,
       )
@@ -105,7 +108,11 @@ export const IndicatorStrip = GObject.registerClass(
       this.destroy_all_children()
       if (!this._box) return
 
-      const hidden = new Set(this._settings.get_strv(HIDDEN_KEY))
+      // Indicators in the overflow are shown there instead.
+      const hidden = new Set([
+        ...this._settings.get_strv(HIDDEN_KEY),
+        ...this._settings.get_strv(OVERFLOW_KEY),
+      ])
       const order = this._settings.get_strv(ORDER_KEY)
       const entries = orderIndicators(indicatorNames(this._quickSettings), order)
       for (const { child, name } of entries) {

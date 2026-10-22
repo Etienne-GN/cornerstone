@@ -23,6 +23,7 @@ import GObject from 'gi://GObject'
 import {
   BUTTON_KEYS,
   OVERRIDES_KEY,
+  buttonValue,
   overriddenValue,
   parseOverrides,
   withOverride,
@@ -124,22 +125,11 @@ export const ButtonConfig = GObject.registerClass(
     }
 
     _global(key) {
-      switch (BUTTON_KEYS[key]) {
-        case 'as':
-          return this._settings.get_strv(key)
-        case 'i':
-          return this._settings.get_int(key)
-        default:
-          return this._settings.get_string(key)
-      }
+      return buttonValue(this._settings, null, key)
     }
 
     _value(key) {
-      if (this._monitor !== null) {
-        const own = overriddenValue(this._overrides(), this._monitor, key)
-        if (own !== undefined) return own
-      }
-      return this._global(key)
+      return buttonValue(this._settings, this._monitor, key)
     }
 
     _set(key, value) {

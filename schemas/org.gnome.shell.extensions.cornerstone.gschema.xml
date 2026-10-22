@@ -78,6 +78,11 @@
       <summary>Hidden indicators</summary>
       <description>System indicators the button does not show.</description>
     </key>
+    <key type="as" name="button-overflow-indicators">
+      <default>[]</default>
+      <summary>Indicators in the overflow</summary>
+      <description>System indicators shown in the tray overflow popup instead of the button.</description>
+    </key>
     <key type="s" name="clock-format">
       <default>''</default>
       <summary>Clock format</summary>
@@ -97,7 +102,7 @@
     <key type="s" name="button-monitor-overrides">
       <default>'{}'</default>
       <summary>Per-monitor button settings</summary>
-      <description>JSON object keyed by monitor ('main', 'connector:DP-1'): the button settings a monitor uses instead of the ones above (button-elements, button-indicator-order, button-hidden-indicators, clock-format, clock-font, button-spacing).</description>
+      <description>JSON object keyed by monitor ('main', 'connector:DP-1'): the button settings a monitor uses instead of the ones above (button-elements, button-indicator-order, button-hidden-indicators, button-overflow-indicators, clock-format, clock-font, button-spacing).</description>
     </key>
   </schema>
 </schemalist>

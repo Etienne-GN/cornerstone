@@ -52,6 +52,9 @@ export default class CornerstoneExtension extends Extension {
     )
     this._mirrorController.skipQuickSettings = () =>
       this._oneButton?.isActive ?? false
+    // Its indicators can go to the overflow instead.
+    this._mirrorController.indicatorsInOverflow = () =>
+      this._oneButton?.isActive ?? false
     this._oneButton.onActiveChanged = () => this._mirrorController?.refresh()
     this._panels.connectObject(
       'changed',

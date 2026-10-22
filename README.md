@@ -35,7 +35,9 @@ holds only its own features: see the
   centre or right part of the bar, hide them, or tuck them in an overflow
   behind a chevron, Windows style, in a grid as wide as you like. The
   chevron goes wherever you put it, the icons can sit closer together,
-  and a monitor's layout can be copied to the others.
+  and a monitor's layout can be copied to the others. With the one
+  button, system indicators (network, volume, battery...) can go to the
+  overflow too.
 - Everything can be turned off to get GNOME's own clock, menus and
   popups back.
 

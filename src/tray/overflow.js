@@ -151,6 +151,7 @@ export const OverflowButton = GObject.registerClass(
         this,
       )
       this.menu.box.add_child(this._flow)
+      this._indicators = []
       this._flow.connectObject(
         'child-added',
         () => this._sync(),
@@ -188,8 +189,52 @@ export const OverflowButton = GObject.registerClass(
       )
     }
 
+    // Clones of system indicators, after the icons, shown while their
+    // source is; a click opens the Action Center through `activate`.
+    setIndicators(sources, activate) {
+      if (
+        sources.length === this._indicators.length &&
+        sources.every((source, i) => this._indicators[i].source === source)
+      )
+        return
+
+      this._clearIndicators()
+      this._indicators = sources.map((source) => {
+        const cell = new St.Button({
+          style_class: 'cornerstone-overflow-indicator',
+          can_focus: true,
+          child: new Clutter.Clone({
+            source,
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+          }),
+        })
+        cell.connect('clicked', () => {
+          menuClose(this.menu, { animate: false })
+          activate(this)
+        })
+        cell.connect('notify::visible', () => this._sync())
+        const binding = source.bind_property(
+          'visible',
+          cell,
+          'visible',
+          GObject.BindingFlags.SYNC_CREATE,
+        )
+        // A binding outlives a destroyed clone until it is finalized.
+        cell.connect('destroy', () => binding.unbind())
+        this._flow.add_child(cell)
+        return { source, cell }
+      })
+      this._sync()
+    }
+
+    _clearIndicators() {
+      for (const { cell } of this._indicators) cell.destroy()
+      this._indicators = []
+    }
+
     _sync() {
-      const empty = this._flow.get_n_children() === 0
+      const empty = !this._flow.get_children().some((child) => child.visible)
       this.container.visible = !empty
       if (empty && this.menu.isOpen) menuClose(this.menu, { animate: false })
     }

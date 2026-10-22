@@ -38,12 +38,20 @@ import {
 import { PrimaryTray } from '../tray/primaryTray.js'
 import { OverflowButton } from '../tray/overflow.js'
 import { SPACING_KEY, TraySpacing } from '../tray/spacing.js'
+import { indicatorNames } from '../button/indicators.js'
+import { orderIndicators } from '../button/order.js'
+import { OVERRIDES_KEY, buttonValue } from '../button/overrides.js'
 
 const ENABLED_KEY = 'mirror-indicators'
 const QUICK_SETTINGS = 'quickSettings'
 const REFRESH = 'refresh'
 const REFRESH_DELAY_MS = 100
 const COLUMNS_KEY = 'tray-overflow-columns'
+const INDICATOR_KEYS = [
+  'button-indicator-order',
+  'button-hidden-indicators',
+  'button-overflow-indicators',
+]
 const BOX_ACTORS = {
   left: '_leftBox',
   center: '_centerBox',
@@ -67,6 +75,8 @@ export class MirrorController {
     this._sources = new Map()
     // Set by whoever owns the system menu slot instead (the one button).
     this.skipQuickSettings = () => false
+    // Whether system indicators may go to the overflow (the one button).
+    this.indicatorsInOverflow = () => false
     this._signalsHandler = new Utils.GlobalSignalsHandler()
     this._timeoutsHandler = new Utils.TimeoutsHandler()
 
@@ -78,6 +88,8 @@ export class MirrorController {
           `changed::${ENABLED_KEY}`,
           `changed::${TRAY_KEY}`,
           `changed::${SPACING_KEY}`,
+          `changed::${OVERRIDES_KEY}`,
+          ...INDICATOR_KEYS.map((key) => `changed::${key}`),
         ],
         () => this.refresh(),
       ],
@@ -295,6 +307,24 @@ export class MirrorController {
     return monitorKey(global.display, panel.monitor.index, primaryIndex)
   }
 
+  // The system indicators the panel's monitor puts in the overflow, in the
+  // button's order.
+  _overflowIndicators(panel) {
+    const quickSettings = Main.panel.statusArea.quickSettings
+    if (!this.indicatorsInOverflow() || !quickSettings?._indicators) return []
+
+    const key = this._keyFor(panel)
+    const value = (name) => buttonValue(this._settings, key, name)
+    const hidden = new Set(value('button-hidden-indicators'))
+    const wanted = new Set(value('button-overflow-indicators'))
+    return orderIndicators(
+      indicatorNames(quickSettings),
+      value('button-indicator-order'),
+    )
+      .filter(({ name }) => wanted.has(name) && !hidden.has(name))
+      .map(({ child }) => child)
+  }
+
   // The tray layout of the panel's monitor, for the icons present now.
   _itemsFor(panel) {
     const key = this._keyFor(panel)
@@ -348,7 +378,12 @@ export class MirrorController {
         this._destroyMirror(state, role)
 
     const overflowItems = items.filter((item) => item.state === 'overflow')
-    const overflow = this._syncOverflow(panel, state, overflowItems.length > 0)
+    const indicators = this._overflowIndicators(panel)
+    const overflow = this._syncOverflow(
+      panel,
+      state,
+      overflowItems.length > 0 || indicators.length > 0,
+    )
 
     const px = this._spacingFor(panel)
     this._spacing.apply(overflow, px)
@@ -400,8 +435,12 @@ export class MirrorController {
       entry.mirror.syncOrientation(false)
       index++
     }
+    overflow?.setIndicators(indicators, (button) =>
+      this._openActionCenter?.(button),
+    )
     // The flow keeps the popup sized; drop the overflow once it is empty.
-    if (overflow && index === 0) this._destroyOverflow(panel, state)
+    if (overflow && index === 0 && !indicators.length)
+      this._destroyOverflow(panel, state)
 
     if (!panel.isPrimaryBar) this._syncQuickSettings(panel, state)
   }

@@ -23,6 +23,7 @@ export const BUTTON_KEYS = {
   'button-elements': 'as',
   'button-indicator-order': 'as',
   'button-hidden-indicators': 'as',
+  'button-overflow-indicators': 'as',
   'clock-format': 's',
   'clock-font': 's',
   'button-spacing': 'i',
@@ -72,6 +73,24 @@ export function parseOverrides(raw) {
 export function overriddenValue(overrides, monitor, key) {
   const value = overrides[monitor]?.[key]
   return value !== undefined && validValue(key, value) ? value : undefined
+}
+
+// The value `monitor` uses for `key`: its own, else every monitor's (also
+// for a null monitor).
+export function buttonValue(settings, monitor, key) {
+  if (monitor !== null) {
+    const overrides = parseOverrides(settings.get_string(OVERRIDES_KEY))
+    const own = overriddenValue(overrides, monitor, key)
+    if (own !== undefined) return own
+  }
+  switch (BUTTON_KEYS[key]) {
+    case 'as':
+      return settings.get_strv(key)
+    case 'i':
+      return settings.get_int(key)
+    default:
+      return settings.get_string(key)
+  }
 }
 
 // `values` (every key) for the monitor, or null to drop its override.

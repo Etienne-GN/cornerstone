@@ -65,6 +65,12 @@ const FORMAT_CODES = [
   ['\\n', () => _('Second line')],
 ]
 
+const INDICATOR_STATE_LABELS = () => [
+  _('Shown'),
+  _('In the overflow'),
+  _('Hidden'),
+]
+
 const ELEMENT_LABELS = {
   indicators: () => _('System indicators'),
   clock: () => _('Clock'),
@@ -315,10 +321,13 @@ export class ButtonPage {
   _buildIndicators() {
     const group = new Adw.PreferencesGroup({
       title: _('System indicators'),
-      description: _('Shown in the button when GNOME shows them.'),
+      description: _(
+        'Shown in the button, or in the tray overflow, when GNOME shows them.',
+      ),
       header_suffix: resetButton(this._config, [
         'button-indicator-order',
         'button-hidden-indicators',
+        'button-overflow-indicators',
       ]),
     })
     this.page.add(group)
@@ -328,6 +337,7 @@ export class ButtonPage {
       CATALOG_KEY,
       'button-indicator-order',
       'button-hidden-indicators',
+      'button-overflow-indicators',
     ])
       this._connect(key, () => this._syncIndicators())
     this._syncIndicators()
@@ -347,6 +357,7 @@ export class ButtonPage {
     }
 
     const hidden = this._config.get_strv('button-hidden-indicators')
+    const overflow = this._config.get_strv('button-overflow-indicators')
     const ordered = orderIndicators(
       indicators,
       this._config.get_strv('button-indicator-order'),
@@ -356,18 +367,31 @@ export class ButtonPage {
       this._config.set_strv('button-indicator-order', order)
 
     ordered.forEach(({ name, icon, visible }, index) => {
-      const row = new Adw.SwitchRow({
+      const row = new Adw.ActionRow({
         title: indicatorLabel(name),
         subtitle: visible === false ? _('Not shown by GNOME right now') : '',
-        active: !hidden.includes(name),
       })
       row.add_prefix(iconImage(icon))
-      row.connect('notify::active', () => {
-        const next = row.active
-          ? hidden.filter((n) => n !== name)
-          : [...hidden, name]
-        this._config.set_strv('button-hidden-indicators', next)
+      const placement = new Gtk.DropDown({
+        model: Gtk.StringList.new(INDICATOR_STATE_LABELS()),
+        selected: hidden.includes(name) ? 2 : overflow.includes(name) ? 1 : 0,
+        valign: Gtk.Align.CENTER,
+        tooltip_text: _('Where the indicator goes'),
       })
+      placement.connect('notify::selected', () => {
+        const without = (list) => list.filter((n) => n !== name)
+        const selected = placement.selected
+        this._config.set_strv('button-overflow-indicators', [
+          ...without(overflow),
+          ...(selected === 1 ? [name] : []),
+        ])
+        this._config.set_strv('button-hidden-indicators', [
+          ...without(hidden),
+          ...(selected === 2 ? [name] : []),
+        ])
+      })
+      row.add_suffix(placement)
+      row._placement = placement
       makeReorderable(row, name, {
         first: index === 0,
         last: index === names.length - 1,

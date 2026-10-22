@@ -58,6 +58,9 @@ date '+%F %T' | tee ~/cornerstone-check-start.txt
   - drag the Overflow row, or change its box: the chevron follows;
   - Copy to… gives another monitor (or all of them) this monitor's layout;
   - Reset puts that monitor back to GNOME's order.
+- With the one button, set a system indicator to "In the overflow" (Button
+  page): it leaves the button and shows in the chevron's popup on every
+  bar; a click on it opens the Action Center against the chevron.
 - Turn on "Custom icon spacing" and lower the pixels: the tray icons and
   the chevron move closer on horizontal bars; turned off, the theme's
   spacing comes back.

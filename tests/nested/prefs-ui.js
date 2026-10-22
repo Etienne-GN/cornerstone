@@ -124,10 +124,18 @@ async function checkButtonPage() {
       rows.length === catalog.indicators.length,
       `${rows.length} indicator rows for ${catalog.indicators.length}`,
     )
-    rows[0].active = false
+    const strv = (key) => settings.get_strv(key).length
+    rows[0]._placement.selected = 1
     assert(
-      settings.get_strv('button-hidden-indicators').length === 1,
-      'an indicator switch hides it',
+      strv('button-overflow-indicators') === 1 &&
+        strv('button-hidden-indicators') === 0,
+      'an indicator put in the overflow',
+    )
+    page._indicatorRows._rows[0]._placement.selected = 2
+    assert(
+      strv('button-overflow-indicators') === 0 &&
+        strv('button-hidden-indicators') === 1,
+      'an indicator hidden',
     )
   }
   resetAll()

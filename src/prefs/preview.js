@@ -107,6 +107,7 @@ export const ButtonPreview = GObject.registerClass(
         'button-elements',
         'button-indicator-order',
         'button-hidden-indicators',
+        'button-overflow-indicators',
       ].map((key) => config.connect(`changed::${key}`, () => this._syncLayout()))
       this._ids.push(
         config.connect('changed::clock-format', () => this._syncClock()),
@@ -161,7 +162,10 @@ export const ButtonPreview = GObject.registerClass(
       let child
       while ((child = this._indicators.get_first_child()))
         this._indicators.remove(child)
-      const hidden = new Set(this._config.get_strv('button-hidden-indicators'))
+      const hidden = new Set([
+        ...this._config.get_strv('button-hidden-indicators'),
+        ...this._config.get_strv('button-overflow-indicators'),
+      ])
       const order = this._config.get_strv('button-indicator-order')
       const { indicators } = readCatalog(this._settings)
       for (const { name, icon, visible } of orderIndicators(indicators, order)) {

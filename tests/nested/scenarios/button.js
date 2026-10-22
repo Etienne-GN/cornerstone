@@ -130,6 +130,38 @@ export async function run() {
   ])
     s.reset(key)
 
+  // In the overflow: out of the strip, in the chevron's popup, and a click
+  // there opens the Action Center against the chevron.
+  s.set_strv('button-overflow-indicators', [hiddenName])
+  const mc = ext().stateObj.mirrorController
+  const chevron = () => mc._states.get(mc._primaryBar)?.overflow ?? null
+  const [{ cell }] = await waitFor(() => {
+    const cells = chevron()?._indicators
+    return cells?.length === 1 && cells
+  })
+  assert(cell.visible, `${hiddenName} shown in the overflow`)
+  assert(
+    !strip.get_children().some((c) => c._cornerstoneIndicator === hiddenName),
+    `${hiddenName} out of the button`,
+  )
+  chevron().menu.open()
+  await waitFor(() => chevron().menu.isOpen)
+  await sleep(300)
+  await captureStage('3b-indicator-overflow')
+  cell.emit('clicked', 1)
+  await waitFor(() => ac().isOpen)
+  assert(!chevron().menu.isOpen, 'overflow popup closed on click')
+  assert(ac()._source === chevron(), 'Action Center anchored to the chevron')
+  await sleep(300)
+  await captureStage('3c-indicator-opens-ac')
+  mc._openActionCenter(chevron())
+  await waitFor(() => !ac().isOpen)
+  s.reset('button-overflow-indicators')
+  await waitFor(() => !chevron())
+  await waitFor(() =>
+    strip.get_children().some((c) => c._cornerstoneIndicator === hiddenName),
+  )
+
   // Per monitor: the second bar gets its own clock and elements, the
   // first keeps following every monitor.
   if (DTP && MONITORS > 1) {
