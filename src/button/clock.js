@@ -33,6 +33,15 @@ export function formatClock(format, now, gnomeClock) {
   return now.format(format) ?? format
 }
 
+// A side bar is narrow: one word per line, hours and minutes apart.
+export function stackClock(text) {
+  return text
+    .trim()
+    .split(/\s+/u)
+    .flatMap((word) => word.split(':'))
+    .join('\n')
+}
+
 // A Pango font description as St CSS; empty for the theme font.
 export function fontCss(description) {
   if (!description) return ''
@@ -65,6 +74,7 @@ export const ClockLabel = GObject.registerClass(
       this.clutter_text.line_alignment = Pango.Alignment.CENTER
       this._settings = settings
       this._secondsId = 0
+      this._vertical = false
 
       this._wallClock = new GnomeDesktop.WallClock()
       this._wallClock.connectObject('notify::clock', () => this._sync(), this)
@@ -80,13 +90,20 @@ export const ClockLabel = GObject.registerClass(
       this._syncFont()
     }
 
+    setVertical(vertical) {
+      if (this._vertical === vertical) return
+      this._vertical = vertical
+      this._sync()
+    }
+
     _sync() {
       const format = this._settings.get_string(FORMAT_KEY)
-      this.text = formatClock(
+      const text = formatClock(
         format,
         GLib.DateTime.new_now_local(),
         this._wallClock.clock,
       )
+      this.text = this._vertical ? stackClock(text) : text
       this._scheduleSeconds(SECONDS_RE.test(format))
     }
 

@@ -110,8 +110,11 @@ export const IndicatorStrip = GObject.registerClass(
       const entries = orderIndicators(indicatorNames(this._quickSettings), order)
       for (const { child, name } of entries) {
         if (hidden.has(name)) continue
+        // Centred both ways, so a clone keeps its source's size instead of
+        // being stretched across a side bar.
         const clone = new Clutter.Clone({
           source: child,
+          x_align: Clutter.ActorAlign.CENTER,
           y_align: Clutter.ActorAlign.CENTER,
         })
         clone._cornerstoneIndicator = name

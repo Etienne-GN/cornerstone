@@ -13,20 +13,24 @@ holds only its own features: see the
 
 ## Features
 
-- Action Center: quick settings, notifications and the calendar in one
-  popup. The clock and the system menu of any bar (mirrors included) open
-  it on that bar's monitor; Super+V / Super+M / Super+S open it on the
-  monitor under the pointer; a click on a notification banner opens it too,
-  or activates the notification if you prefer. It can be turned off to get
-  GNOME's own menus back.
-- Mirrored indicators: with Dash to Panel's panels on several monitors, the
-  top bar status indicators (AppIndicator, quick settings and others) are
-  mirrored on the bars of the other monitors, and their menus open on that
-  monitor. Per-monitor, per-indicator switches.
-
-Coming next (see the plan): one bar button for the system indicators and
-the clock, a two-column Action Center, per-monitor tray organization with
-an overflow, and preferences to customize all of it.
+- One button: the clock and the system menu of every bar become one button
+  showing the system indicators and the clock. Which indicators, their
+  order, the clock format (presets or your own) and its font are yours to
+  pick, with a live preview in the preferences.
+- Action Center: quick settings across the top, notifications on the left,
+  the calendar on the right, in one popup that opens on the monitor you
+  clicked. Width, column sides and sections (weather, world clocks...) are
+  settings. Super+V / Super+M / Super+S open it on the monitor under the
+  pointer; a click on a notification banner opens it too, or activates the
+  notification if you prefer.
+- Tray on every monitor: with Dash to Panel's bars on several monitors,
+  the tray icons (AppIndicator, Vitals and others) show on every bar and
+  their menus open there.
+- Tray organization, per monitor: order the icons, put them in the left,
+  centre or right part of the bar, hide them, or tuck them in an overflow
+  behind a chevron, Windows style.
+- Everything can be turned off to get GNOME's own clock, menus and
+  popups back.
 
 ## Install
 

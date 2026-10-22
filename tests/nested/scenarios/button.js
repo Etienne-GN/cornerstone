@@ -11,6 +11,7 @@ import {
   DTP,
   DTP_UUID,
   MONITORS,
+  VERTICAL,
   assert,
   assertSlotsRestored,
   bars,
@@ -115,6 +116,29 @@ export async function run() {
     'button-hidden-indicators',
   ])
     s.reset(key)
+
+  if (DTP && VERTICAL) {
+    const positions = Object.fromEntries(
+      global.dashToPanel.panels.map((p) => [p.monitor.index, 'LEFT']),
+    )
+    dtpSettings().set_string('panel-positions', JSON.stringify(positions))
+    await waitFor(() =>
+      global.dashToPanel?.panels?.every((p) => p.checkIfVertical()),
+    )
+    await bars()
+    await sleep(500)
+    buttons = assertPlaced('vertical bars')
+    assert(
+      buttons.every((b) => b._vertical),
+      'buttons stack vertically on side bars',
+    )
+    await captureStage('6-vertical')
+    dtpSettings().set_string('panel-positions', '{}')
+    await waitFor(() =>
+      global.dashToPanel?.panels?.every((p) => !p.checkIfVertical()),
+    )
+    await bars()
+  }
 
   if (DTP) {
     dtpSettings().set_boolean('multi-monitors', false)

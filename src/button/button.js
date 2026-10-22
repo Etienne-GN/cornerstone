@@ -72,6 +72,7 @@ export const CornerstoneButton = GObject.registerClass(
         ? Clutter.Orientation.VERTICAL
         : Clutter.Orientation.HORIZONTAL
       this._elements.indicators.setVertical(vertical)
+      this._elements.clock.setVertical(vertical)
     }
 
     _syncElements() {

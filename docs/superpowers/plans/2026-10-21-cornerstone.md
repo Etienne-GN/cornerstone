@@ -184,7 +184,7 @@ dialog.
 
 ## Phase 6: wrap-up
 
-- [ ] 6.1 Full nested run on two monitors, vertical bar, with and without
+- [x] 6.1 Full nested run on two monitors, vertical bar, with and without
   dash-to-panel; unit tests; lint.
-- [ ] 6.2 GNOME 50 checklist for Etienne's workstation.
-- [ ] 6.3 Ledger of what was done and what is left.
+- [x] 6.2 GNOME 50 checklist for Etienne's workstation.
+- [x] 6.3 Ledger of what was done and what is left.

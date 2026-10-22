@@ -15,7 +15,7 @@ const { indicatorNames } = loadGjs(src('indicators.js'), {
   Main: {},
 })
 const { orderIndicators, elementOrder } = loadGjs(src('order.js'))
-const { formatClock } = loadGjs(src('clock.js'), {
+const { formatClock, stackClock } = loadGjs(src('clock.js'), {
   GObject,
   St: { Label: Base },
   Clutter: {},
@@ -78,4 +78,8 @@ test('an empty format shows GNOME clock text', () => {
   assert.equal(formatClock('', now, 'Oct 21 23:00'), 'Oct 21 23:00')
   assert.equal(formatClock('%H', now, 'x'), '23')
   assert.equal(formatClock('%Q', now, 'x'), '%Q', 'an invalid format shows as is')
+})
+
+test('a side bar clock puts one word per line, hours and minutes apart', () => {
+  assert.equal(stackClock('Oct 21\u2002 23:35 '), 'Oct\n21\n23\n35')
 })

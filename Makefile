@@ -52,8 +52,12 @@ install: _build
 	cp -r ./_build/* $(INSTALLBASE)/$(UUID)/
 	rm -rf _build
 
+# Python's zipfile stands in where zip is not installed.
 zip-file: _build
-	cd _build && zip -qr "../$(UUID).zip" .
+	cd _build && python3 -c 'import os, sys, zipfile; \
+		z = zipfile.ZipFile(sys.argv[1], "w", zipfile.ZIP_DEFLATED); \
+		[z.write(os.path.join(d, f), os.path.relpath(os.path.join(d, f))) \
+		 for d, _, fs in os.walk(".") for f in fs]; z.close()' "../$(UUID).zip"
 	rm -rf _build
 
 _build: all
