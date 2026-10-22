@@ -2,13 +2,10 @@
   "extension-id": "cornerstone",
   "uuid": "cornerstone@etienne-gn.github.io",
   "name": "Cornerstone",
-  "description": "An icon taskbar for the Gnome Shell, with the panel on every monitor. Cornerstone is a fork of Dash to Panel (developed by @jderose9 and @charlesg99) that adds Multi Monitor Bar features, based on the work of Frederyk Abryan and spin83.\n\nThis extension moves the dash into the gnome main panel so that the application launchers and system tray are combined into a single panel, similar to that found in KDE Plasma and Windows 7+.",
+  "description": "One bar button for the clock and system indicators, an Action Center with quick settings, notifications and the calendar, and tray icons on every monitor. Works with Dash to Panel or on GNOME's own top bar.\n\nTray mirroring is adapted from Multi Monitor Bar by Frederyk Abryan, itself derived from Multi Monitors Add-On by spin83.",
   "shell-version": ["50", "51"],
-  "url": "",
+  "url": "https://github.com/Etienne-GN/cornerstone",
   "settings-schema": "org.gnome.shell.extensions.cornerstone",
   "gettext-domain": "cornerstone",
-  "version": 9999,
-  "donations": {
-      "paypal": "charlesg99"
-  }
+  "version": 1
 }

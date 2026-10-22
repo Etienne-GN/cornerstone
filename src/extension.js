@@ -1,10 +1,10 @@
 /*
- * Dash-To-Panel extension for Gnome 3
- * Copyright 2016 Jason DeRose (jderose9) and Charles Gagnon (charlesg99)
+ * Cornerstone: one bar button, an Action Center and tray icons on every
+ * monitor, as a companion to Dash to Panel or on GNOME's own top bar.
  *
- * This program is free software: you can redistribute it and/or modify
+ * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -13,180 +13,47 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * along with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
-import Gio from 'gi://Gio'
-import GLib from 'gi://GLib'
-import Shell from 'gi://Shell'
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js'
 
-import * as Config from 'resource:///org/gnome/shell/misc/config.js'
-import * as Main from 'resource:///org/gnome/shell/ui/main.js'
-import { EventEmitter } from 'resource:///org/gnome/shell/misc/signals.js'
-import {
-  Extension,
-  gettext as _,
-} from 'resource:///org/gnome/shell/extensions/extension.js'
-import * as PanelSettings from './panelSettings.js'
-
-import * as PanelManager from './panelManager.js'
+import { PanelSource } from './panels.js'
 import { MirrorController } from './mirror/controller.js'
 import { ActionCenter } from './actionCenter/actionCenter.js'
-import * as AppIcons from './appIcons.js'
-import * as Utils from './utils.js'
-import { releaseUrl } from './releaseLinks.js'
-
-const UBUNTU_DOCK_UUID = 'ubuntu-dock@ubuntu.com'
-
-let panelManager
-let startupCompleteHandler
-let ubuntuDockDelayId = 0
-
-export let DTP_EXTENSION = null
-export let SETTINGS = null
-export let DESKTOPSETTINGS = null
-export let TERMINALSETTINGS = null
-export let NOTIFICATIONSSETTINGS = null
-export let PERSISTENTSTORAGE = null
-export let EXTENSION_PATH = null
-export let tracker = null
 
 function isolated(component, teardown) {
   try {
-    Promise.resolve(teardown()).catch((e) =>
-      console.error(`[cornerstone] disable ${component}`, e),
-    )
+    teardown()
   } catch (e) {
     console.error(`[cornerstone] disable ${component}`, e)
   }
 }
 
-export default class DashToPanelExtension extends Extension {
-  constructor(metadata) {
-    super(metadata)
+export default class CornerstoneExtension extends Extension {
+  enable() {
+    this._settings = this.getSettings()
 
-    this._realHasOverview = Main.sessionMode.hasOverview
-    this._enableGeneration = 0
+    this._panels = new PanelSource()
 
-    //create an object that persists until gnome-shell is restarted, even if the extension is disabled
-    PERSISTENTSTORAGE = {}
-  }
-
-  async enable() {
-    // disable() can run while enable() awaits; a stale enable must stop.
-    const generation = ++this._enableGeneration
-    DTP_EXTENSION = this
-    SETTINGS = this.getSettings()
-    DESKTOPSETTINGS = new Gio.Settings({
-      schema_id: 'org.gnome.desktop.interface',
-    })
-    TERMINALSETTINGS = new Gio.Settings({
-      schema_id: 'org.gnome.desktop.default-applications.terminal',
-    })
-    NOTIFICATIONSSETTINGS = new Gio.Settings({
-      schema_id: 'org.gnome.desktop.notifications',
-    })
-    EXTENSION_PATH = this.path
-
-    tracker = Shell.WindowTracker.get_default()
-
-    //create a global object that can emit signals and conveniently expose functionalities to other extensions
-    global.dashToPanel = new EventEmitter()
-
-    // reset to be safe
-    SETTINGS.set_boolean('prefs-opened', false)
-
-    await PanelSettings.init(SETTINGS)
-    if (generation !== this._enableGeneration) return
-
-    // To remove later, try to map settings using monitor indexes to monitor ids
-    PanelSettings.adjustMonitorSettings(SETTINGS)
-
-    // if new version, display a notification linking to release notes
-    if (this.metadata.version != SETTINGS.get_int('extension-version')) {
-      const notesUrl = releaseUrl({
-        url: this.metadata.url,
-        version: this.metadata.version,
-      })
-
-      Utils.notify(
-        _('%s has been updated!').format(this.metadata.name),
-        _('You are now running version') + ` ${this.metadata.version}.`,
-        'software-update-available-symbolic',
-        Gio.icon_new_for_string(
-          `${this.path}/img/dash-to-panel-logo-light.svg`,
-        ),
-        notesUrl
-          ? {
-              text: _(`See what's new`),
-              func: () =>
-                Gio.app_info_launch_default_for_uri(
-                  notesUrl,
-                  global.create_app_launch_context(0, -1),
-                ),
-            }
-          : null,
-      )
-
-      SETTINGS.set_int('extension-version', this.metadata.version)
-    }
-
-    Main.layoutManager.startInOverview = !SETTINGS.get_boolean(
-      'hide-overview-on-startup',
-    )
-
-    if (
-      SETTINGS.get_boolean('hide-overview-on-startup') &&
-      Main.layoutManager._startingUp
-    ) {
-      Main.sessionMode.hasOverview = false
-      startupCompleteHandler = Main.layoutManager.connect(
-        'startup-complete',
-        () => {
-          Main.sessionMode.hasOverview = this._realHasOverview
-
-          // the extension initialization timing changed in g-s version 50 and the startup animation
-          // is already running when the extension init code is executed. Since there is no way to
-          // prevent the animation from running, hide the overview when it completes
-          if (Config.PACKAGE_VERSION >= '50') Main.overview.hide()
-        },
-      )
-    }
-
-    this.enableGlobalStyles()
-
-    this._mirrorController = new MirrorController(SETTINGS, (actor) =>
-      this._openActionCenter(actor),
-    )
-
-    this._actionCenter = new ActionCenter(SETTINGS)
+    this._actionCenter = new ActionCenter(this._settings, this._panels)
     this._actionCenter.watchSetting()
 
-    let completeEnable = () => {
-      panelManager = new PanelManager.PanelManager()
-      panelManager.enable()
-      ubuntuDockDelayId = 0
+    this._mirrorController = new MirrorController(this._settings, (actor) =>
+      this._openActionCenter(actor),
+    )
+    this._panels.connectObject(
+      'changed',
+      () => this._mirrorController?.attach(this._panels.dtpPanels),
+      this,
+    )
 
-      return GLib.SOURCE_REMOVE
-    }
+    this._panels.enable()
+    this._mirrorController.attach(this._panels.dtpPanels)
+  }
 
-    // disable ubuntu dock if present
-    if (Main.extensionManager._extensionOrder.indexOf(UBUNTU_DOCK_UUID) >= 0) {
-      let disabled = global.settings.get_strv('disabled-extensions')
-
-      if (disabled.indexOf(UBUNTU_DOCK_UUID) < 0) {
-        disabled.push(UBUNTU_DOCK_UUID)
-        global.settings.set_strv('disabled-extensions', disabled)
-
-        // wait a bit so ubuntu dock can disable itself and restore the showappsbutton
-        ubuntuDockDelayId = GLib.timeout_add(
-          GLib.PRIORITY_DEFAULT,
-          200,
-          completeEnable,
-        )
-      }
-    } else completeEnable()
+  get panels() {
+    return this._panels ?? null
   }
 
   get mirrorController() {
@@ -206,73 +73,16 @@ export default class DashToPanelExtension extends Extension {
   }
 
   disable() {
-    this._enableGeneration++
-    if (ubuntuDockDelayId) GLib.Source.remove(ubuntuDockDelayId)
-    ubuntuDockDelayId = 0
-
     // Each teardown step runs even when an earlier one throws.
+    isolated('panel source', () => {
+      this._panels?.disconnectObject(this)
+      this._panels?.disable()
+    })
     isolated('action center', () => this._actionCenter?.destroy())
     this._actionCenter = null
-
-    isolated('panel settings', () => PanelSettings.disable(SETTINGS))
-    isolated('panel manager', () => panelManager?.disable())
     isolated('mirror controller', () => this._mirrorController?.destroy())
     this._mirrorController = null
-    PanelSettings.clearCache()
-
-    DTP_EXTENSION = null
-    SETTINGS = null
-    DESKTOPSETTINGS = null
-    TERMINALSETTINGS = null
-    panelManager = null
-
-    delete global.dashToPanel
-
-    this.disableGlobalStyles()
-
-    AppIcons.resetRecentlyClickedApp()
-
-    if (startupCompleteHandler) {
-      Main.layoutManager.disconnect(startupCompleteHandler)
-      startupCompleteHandler = null
-    }
-
-    Main.sessionMode.hasOverview = this._realHasOverview
-  }
-
-  openPreferences() {
-    if (SETTINGS.get_boolean('prefs-opened')) {
-      let prefsWindow = Utils.getAllMetaWindows().find(
-        (w) =>
-          w.title == this.metadata.name &&
-          w.wm_class == 'org.gnome.Shell.Extensions',
-      )
-
-      if (prefsWindow) Main.activateWindow(prefsWindow)
-
-      return
-    }
-
-    super.openPreferences()
-  }
-
-  resetGlobalStyles() {
-    this.disableGlobalStyles()
-    this.enableGlobalStyles()
-  }
-
-  enableGlobalStyles() {
-    let globalBorderRadius = SETTINGS.get_int('global-border-radius')
-
-    if (globalBorderRadius)
-      Main.layoutManager.uiGroup.add_style_class_name(
-        `br${globalBorderRadius * 4}`,
-      )
-  }
-
-  disableGlobalStyles() {
-    ;['br4', 'br8', 'br12', 'br16', 'br20'].forEach((c) =>
-      Main.layoutManager.uiGroup.remove_style_class_name(c),
-    )
+    this._panels = null
+    this._settings = null
   }
 }

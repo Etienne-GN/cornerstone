@@ -5,7 +5,11 @@ session buses, private XDG/HOME/TMPDIR, keyfile GSettings. Logs go to
 `.nested/<scenario>/shell.log`.
 
     tests/nested/run.sh <scenario> [--monitors N] [--vertical]
-      [--viewer] [--with-extension <uuid>]...
+      [--viewer] [--no-dtp] [--with-extension <uuid>]...
+
+The installed Dash to Panel (`~/.local/share/gnome-shell/extensions`) is
+copied in and enabled too, as Cornerstone runs beside it; `--no-dtp` tests
+GNOME's own top bar instead.
 
 Headless runs end with `[cornerstone-test] DONE <scenario>` and a 120 s timeout.
 
@@ -13,7 +17,8 @@ Headless runs end with `[cornerstone-test] DONE <scenario>` and a 120 s timeout.
 
     tests/nested/run.sh interactive --viewer --monitors 2
 
-Opens the mutter-devkit window so you can look at and click the nested shell.
+Needs a mutter built with devkit support (CachyOS's is not). Opens the
+mutter-devkit window so you can look at and click the nested shell.
 No timeout and no DONE sentinel: the run ends on Ctrl+C or when the shell
 exits. The shell runs at `nice -n 10`.
 

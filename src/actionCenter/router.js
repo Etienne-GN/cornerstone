@@ -80,9 +80,11 @@ export class InstanceOverrides {
 }
 
 export class ActionCenterRouter {
-  constructor(actionCenter, getPanels, settings) {
+  // `panels` is the PanelSource.
+  constructor(actionCenter, panels, settings) {
     this._ac = actionCenter
-    this._getPanels = getPanels
+    this._panels = panels
+    this._getPanels = () => panels.dtpPanels
     this._settings = settings
     this._overrides = null
     this._buttonMenus = new Set()
@@ -116,11 +118,7 @@ export class ActionCenterRouter {
       )
 
     this._overrideButtons()
-    global.dashToPanel?.connectObject(
-      'panels-created',
-      () => this._overrideButtons(),
-      this,
-    )
+    this._panels.connectObject('changed', () => this._overrideButtons(), this)
 
     this._watchBanners()
   }
@@ -128,7 +126,7 @@ export class ActionCenterRouter {
   disable() {
     if (!this._overrides) return
 
-    global.dashToPanel?.disconnectObject(this)
+    this._panels.disconnectObject(this)
     Main.messageTray._bannerBin?.disconnectObject(this)
     for (const banner of this._banners) banner.disconnectObject(this)
     this._banners.clear()
@@ -155,10 +153,14 @@ export class ActionCenterRouter {
       panels.find((p) => p.isPrimary),
     ]) {
       if (!panel) continue
-      const mirror = panel._cornerstoneSystemMenu
+      // Whatever holds the slots now: a mirror's bin, or the panel's own.
+      const slots = ['dateMenu', 'quickSettings'].map((role) => {
+        const child = panel.statusArea?.[role]?.container?.get_child()
+        return child?.child ?? child
+      })
       candidates.push(
+        ...slots,
         panel.statusArea?.dateMenu,
-        mirror?.child ?? mirror,
         panel.statusArea?.quickSettings,
         panel.panel,
       )
@@ -196,11 +198,7 @@ export class ActionCenterRouter {
   // dash-to-panel keeps the secondary buttons across `_reset`, so each menu
   // is overridden once per enable.
   _overrideButtons() {
-    const statusAreas = new Set([Main.panel.statusArea])
-    for (const panel of this._getPanels() ?? [])
-      if (panel.statusArea) statusAreas.add(panel.statusArea)
-
-    for (const statusArea of statusAreas) {
+    for (const statusArea of this._panels.statusAreas) {
       for (const role of BUTTON_ROLES) {
         const button = statusArea[role]
         if (button?.menu) this._overrideButton(button)

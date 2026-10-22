@@ -9,20 +9,19 @@ const path = fileURLToPath(new URL('../../src/extension.js', import.meta.url))
 const calls = []
 const logged = []
 const faults = new Set()
-const pendingInits = []
 
 const maybeThrow = (name) => {
   calls.push(name)
   if (faults.has(name)) throw new Error(`${name} failed`)
 }
 
-const settings = {
-  get_boolean: () => false,
-  set_boolean() {},
-  get_int: () => 1,
-  set_int() {},
-  connect: () => 1,
-  disconnect() {},
+class Emitter {
+  connectObject(signal, callback) {
+    this.callback = callback
+  }
+  disconnectObject() {
+    maybeThrow('panel source disconnect')
+  }
 }
 
 const fakes = {
@@ -31,58 +30,35 @@ const fakes = {
     warn() {},
     log() {},
   },
-  Gio: { Settings: class {} },
-  GLib: {
-    PRIORITY_DEFAULT: 0,
-    SOURCE_REMOVE: false,
-    timeout_add: () => 1,
-    Source: { remove() {} },
-  },
-  Shell: { WindowTracker: { get_default: () => ({}) } },
-  Config: { PACKAGE_VERSION: '50.0' },
-  Main: {
-    sessionMode: { hasOverview: true },
-    layoutManager: {
-      _startingUp: false,
-      uiGroup: { add_style_class_name() {}, remove_style_class_name() {} },
-      disconnect() {},
-    },
-    extensionManager: { _extensionOrder: [] },
-  },
-  EventEmitter: class {},
   Extension: class {
     constructor(metadata) {
       this.metadata = metadata
-      this.path = '/ext'
     }
     getSettings() {
-      return settings
+      return {}
     }
   },
-  _: (s) => s,
-  PanelSettings: {
-    init: () =>
-      new Promise((resolve) => {
-        calls.push('settings init')
-        pendingInits.push(resolve)
-      }),
-    adjustMonitorSettings() {},
-    disable: async () => maybeThrow('panel settings disable'),
-    clearCache: () => calls.push('settings clear'),
-  },
-  PanelManager: {
-    PanelManager: class {
-      enable() {
-        calls.push('panel manager enable')
-      }
-      disable() {
-        maybeThrow('panel manager disable')
-      }
-    },
+  PanelSource: class extends Emitter {
+    constructor() {
+      super()
+      calls.push('panel source')
+    }
+    get dtpPanels() {
+      return []
+    }
+    enable() {
+      calls.push('panel source enable')
+    }
+    disable() {
+      maybeThrow('panel source disable')
+    }
   },
   MirrorController: class {
     constructor() {
       calls.push('mirror controller')
+    }
+    attach() {
+      calls.push('mirror attach')
     }
     destroy() {
       maybeThrow('mirror controller destroy')
@@ -97,89 +73,71 @@ const fakes = {
       maybeThrow('action center destroy')
     }
   },
-  AppIcons: { resetRecentlyClickedApp: () => calls.push('app icons reset') },
-  Utils: {},
-  releaseUrl: () => null,
-  global: {},
 }
 
-const { DashToPanelExtension } = loadGjs(path, fakes)
-const settle = () => new Promise((resolve) => setImmediate(resolve))
-
-async function enabled() {
-  const extension = new DashToPanelExtension({ version: 1 })
-  const done = extension.enable()
-  pendingInits.shift()()
-  await done
-  return extension
-}
+const { CornerstoneExtension } = loadGjs(path, fakes)
 
 function reset() {
   calls.length = 0
   logged.length = 0
   faults.clear()
-  pendingInits.length = 0
 }
 
-test('disable runs every teardown step when each one throws', async () => {
+test('enable builds every component and attaches the mirror', () => {
   reset()
-  const extension = await enabled()
+  const extension = new CornerstoneExtension({})
+  extension.enable()
+  assert.deepEqual(calls, [
+    'panel source',
+    'action center',
+    'mirror controller',
+    'panel source enable',
+    'mirror attach',
+  ])
+  extension.disable()
+})
+
+test('a panel change re-attaches the mirror', () => {
+  reset()
+  const extension = new CornerstoneExtension({})
+  extension.enable()
+  calls.length = 0
+  extension.panels.callback()
+  assert.deepEqual(calls, ['mirror attach'])
+  extension.disable()
+})
+
+test('disable runs every teardown step when each one throws', () => {
+  reset()
+  const extension = new CornerstoneExtension({})
+  extension.enable()
   for (const name of [
+    'panel source disconnect',
     'action center destroy',
-    'panel settings disable',
-    'panel manager disable',
     'mirror controller destroy',
   ])
     faults.add(name)
   calls.length = 0
 
   assert.doesNotThrow(() => extension.disable())
-  await settle()
   assert.deepEqual(calls, [
+    'panel source disconnect',
     'action center destroy',
-    'panel settings disable',
-    'panel manager disable',
     'mirror controller destroy',
-    'settings clear',
-    'app icons reset',
   ])
-  assert.deepEqual(logged.map(([context]) => context).sort(), [
+  assert.deepEqual(logged.map(([context]) => context), [
+    '[cornerstone] disable panel source',
     '[cornerstone] disable action center',
     '[cornerstone] disable mirror controller',
-    '[cornerstone] disable panel manager',
-    '[cornerstone] disable panel settings',
   ])
   assert.equal(extension.actionCenter, null)
   assert.equal(extension.mirrorController, null)
+  assert.equal(extension.panels, null)
 })
 
 test('disable before any component exists does not throw', () => {
   reset()
-  const extension = new DashToPanelExtension({ version: 1 })
+  const extension = new CornerstoneExtension({})
   assert.doesNotThrow(() => extension.disable())
   assert.deepEqual(logged, [])
-})
-
-test('a disable during the awaited init stops enable from building', async () => {
-  reset()
-  const extension = new DashToPanelExtension({ version: 1 })
-  const first = extension.enable()
-  extension.disable()
-  const second = extension.enable()
-  pendingInits.shift()()
-  await first
-  const built = ['mirror controller', 'action center', 'panel manager enable']
-  assert.deepEqual(
-    calls.filter((c) => built.includes(c)),
-    [],
-    'the superseded enable built nothing',
-  )
-  pendingInits.shift()()
-  await second
-  assert.deepEqual(
-    calls.filter((c) => built.includes(c)),
-    built,
-    'the current enable builds once',
-  )
-  extension.disable()
 })

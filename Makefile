@@ -1,4 +1,4 @@
-# Basic Makefile
+# Cornerstone. metadata.json is the single source of the extension identity.
 
 metadata = $(shell python3 -c 'import json,sys; print(json.load(open("metadata.json"))[sys.argv[1]])' $(1))
 UUID := $(call metadata,uuid)
@@ -8,43 +8,22 @@ NAME := $(call metadata,name)
 $(if $(UUID),,$(error cannot read uuid from metadata.json))
 $(if $(SCHEMA),,$(error cannot read settings-schema from metadata.json))
 $(if $(DOMAIN),,$(error cannot read gettext-domain from metadata.json))
+
 MODULES = src/*.js src/stylesheet.css metadata.json COPYING README.md
+SUBDIRS = mirror actionCenter
 UI_MODULES = ui/*.ui
-IMAGES = ./* ../media/design/svg/dash-to-panel-logo-light.svg
-
-TOLOCALIZE = src/extension.js src/prefs.js src/appIcons.js src/taskbar.js src/mirror/prefs.js
+TOLOCALIZE = src/*.js src/mirror/*.js src/actionCenter/*.js
 MSGSRC = $(wildcard po/*.po)
-ifeq ($(strip $(DESTDIR)),)
-	INSTALLTYPE = local
-	INSTALLBASE = $(HOME)/.local/share/gnome-shell/extensions
-else
-	INSTALLTYPE = system
-	INSTALLBASE = $(DESTDIR)/usr/share/gnome-shell/extensions
-	SHARE_PREFIX = $(DESTDIR)/usr/share
-endif
-INSTALLNAME = $(UUID)
 
-# The command line passed variable VERSION is used to set the version string
-# in the metadata and in the generated zip-file. If no VERSION is passed, the
-# version is pulled from the latest git tag and the current commit SHA1 is
-# added to the metadata
-ifdef VERSION
-    ifdef TARGET
-		FILESUFFIX = _v$(VERSION)_$(TARGET)
-	else
-		FILESUFFIX = _v$(VERSION)
-	endif
-else
-	LATEST_TAG = $(shell git describe --match "v[0-9]*" --abbrev=0 --tags HEAD)
-	VERSION = $(LATEST_TAG:v%=%)
-	COMMIT = $(shell git rev-parse HEAD)
-	FILESUFFIX =
-endif
+INSTALLBASE = $(HOME)/.local/share/gnome-shell/extensions
+
+# VERSION=<n> on the command line sets the version in the packed metadata.
 
 all: extension
 
 clean:
 	rm -f ./schemas/gschemas.compiled
+	rm -rf ./_build
 
 extension: ./schemas/gschemas.compiled $(MSGSRC:.po=.mo)
 
@@ -58,67 +37,45 @@ mergepo: potfile
 		msgmerge -U $$l ./po/$(DOMAIN).pot; \
 	done;
 
-./po/$(DOMAIN).pot: $(TOLOCALIZE)
+./po/$(DOMAIN).pot: $(TOLOCALIZE) $(UI_MODULES)
 	mkdir -p po
-	xgettext -k_ -kN_ -o po/$(DOMAIN).pot --package-name "$(NAME)" $(TOLOCALIZE) --from-code=UTF-8
-
-	for l in $(UI_MODULES) ; do \
-		intltool-extract --type=gettext/glade $$l; \
-		xgettext -k_ -kN_ -o po/$(DOMAIN).pot $$l.h --join-existing --from-code=UTF-8; \
-		rm -rf $$l.h; \
-	done;
-
-	sed -i -e 's/&\#10;/\\n/g' po/$(DOMAIN).pot
+	xgettext -k_ -kN_ -o po/$(DOMAIN).pot --package-name "$(NAME)" \
+		$(TOLOCALIZE) --from-code=UTF-8
+	xgettext -o po/$(DOMAIN).pot --join-existing $(UI_MODULES)
 
 ./po/%.mo: ./po/%.po
 	msgfmt -c $< -o $@
 
-install: install-local
-
-install-local: _build
-	rm -rf $(INSTALLBASE)/$(INSTALLNAME)
-	mkdir -p $(INSTALLBASE)/$(INSTALLNAME)
-	cp -r ./_build/* $(INSTALLBASE)/$(INSTALLNAME)/
-ifeq ($(INSTALLTYPE),system)
-	rm -r $(INSTALLBASE)/$(INSTALLNAME)/schemas $(INSTALLBASE)/$(INSTALLNAME)/locale
-	mkdir -p $(SHARE_PREFIX)/glib-2.0/schemas $(SHARE_PREFIX)/locale
-	cp -r ./schemas/*gschema.* $(SHARE_PREFIX)/glib-2.0/schemas
-	cp -r ./_build/locale/* $(SHARE_PREFIX)/locale
-endif
-	-rm -fR _build
-	echo done
+# Installs into the live session's extension directory: never use it to
+# test, use tests/nested/run.sh.
+install: _build
+	rm -rf $(INSTALLBASE)/$(UUID)
+	mkdir -p $(INSTALLBASE)/$(UUID)
+	cp -r ./_build/* $(INSTALLBASE)/$(UUID)/
+	rm -rf _build
 
 zip-file: _build
-	cd _build ; \
-	zip -qr "$(UUID)$(FILESUFFIX).zip" .
-	mv _build/$(UUID)$(FILESUFFIX).zip ./
-	-rm -fR _build
+	cd _build && zip -qr "../$(UUID).zip" .
+	rm -rf _build
 
 _build: all
-	-rm -fR ./_build
-	mkdir -p _build
+	rm -rf ./_build
+	mkdir -p _build/ui _build/schemas _build/locale
 	cp $(MODULES) _build
-	mkdir -p _build/mirror
-	cp src/mirror/*.js _build/mirror
-	mkdir -p _build/actionCenter
-	cp src/actionCenter/*.js _build/actionCenter
-	mkdir -p _build/ui
+	for d in $(SUBDIRS); do \
+		mkdir -p _build/$$d; \
+		cp src/$$d/*.js _build/$$d; \
+	done
 	cp $(UI_MODULES) _build/ui
-
-	mkdir -p _build/img
-	cd img ; cp $(IMAGES) ../_build/img/
-	mkdir -p _build/schemas
-	cp schemas/*.xml _build/schemas/
-	cp schemas/gschemas.compiled _build/schemas/
-	mkdir -p _build/locale
+	cp schemas/*.xml schemas/gschemas.compiled _build/schemas/
 	for l in $(MSGSRC:.po=.mo) ; do \
-		lf=_build/locale/`basename $$l .mo`; \
+		lf=_build/locale/`basename $$l .mo`/LC_MESSAGES; \
 		mkdir -p $$lf; \
-		mkdir -p $$lf/LC_MESSAGES; \
-		cp $$l $$lf/LC_MESSAGES/$(DOMAIN).mo; \
-	done;
-ifneq ($(and $(COMMIT),$(VERSION)),)
-	sed -i 's/"version": [[:digit:]][[:digit:]]*/"version": $(VERSION),\n"commit": "$(COMMIT)"/'  _build/metadata.json;
-else ifneq ($(VERSION),)
-	sed -i 's/"version": [[:digit:]][[:digit:]]*/"version": $(VERSION)/'  _build/metadata.json;
+		cp $$l $$lf/$(DOMAIN).mo; \
+	done
+ifneq ($(VERSION),)
+	sed -i 's/"version": [[:digit:]][[:digit:]]*/"version": $(VERSION)/' \
+		_build/metadata.json
 endif
+
+.PHONY: all clean extension potfile mergepo install zip-file _build

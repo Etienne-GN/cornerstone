@@ -705,7 +705,13 @@ const shellPanel = Object.assign(new Actor(), {
   _rightBox: new BoxLayout(),
 })
 
+const { Slots } = loadGjs(
+  fileURLToPath(new URL('../../src/slots.js', import.meta.url)),
+  { console: fakeConsole },
+)
+
 const { MirrorController } = loadGjs(controllerPath, {
+  Slots,
   console: fakeConsole,
   GObject: fakes.GObject,
   Main: { ...fakes.Main, panel: shellPanel, extensionManager: {} },
@@ -737,8 +743,6 @@ function controllerPanels(controller, n, role) {
       monitor: { index: i + 1 },
       panel: {},
       checkIfVertical: () => false,
-      _setAllocationMap() {},
-      updateElementPositions() {},
     }
     const state = controller._stateFor(panel)
     panels.push({ panel, entry: controller._createMirror(panel, state, role) })
@@ -780,10 +784,11 @@ test('a panel that fails to clear does not stop the others', () => {
   makeSource(role, box)
   const controller = new MirrorController(settingsFake)
   const panels = controllerPanels(controller, 2, role)
-  panels[0].panel._cornerstoneSystemMenu = {}
-  panels[0].panel._setAllocationMap = () => {
-    throw new Error('panel gone')
-  }
+  Object.defineProperty(panels[0].panel, 'statusArea', {
+    get() {
+      throw new Error('panel gone')
+    },
+  })
 
   logged.length = 0
   assert.doesNotThrow(() => controller.detach())

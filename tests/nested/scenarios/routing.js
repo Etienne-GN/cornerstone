@@ -53,8 +53,11 @@ function usable(actor) {
 // Kept for the whole run: a collected virtual device is removed.
 let pointer = null
 
+// Clutter.get_default_backend() is gone in 51.
 function seat() {
-  return Clutter.get_default_backend().get_default_seat()
+  const backend =
+    global.stage.context?.get_backend?.() ?? Clutter.get_default_backend()
+  return backend.get_default_seat()
 }
 
 function monitorCenter(index) {
@@ -62,19 +65,25 @@ function monitorCenter(index) {
   return [m.x + Math.floor(m.width / 2), m.y + Math.floor(m.height / 2)]
 }
 
+function virtualPointer() {
+  pointer ??= seat().create_virtual_device(
+    Clutter.InputDeviceType.POINTER_DEVICE,
+  )
+  return pointer
+}
+
+// warp_pointer does nothing in a headless 51 shell; a virtual device moves.
 async function warpTo(index) {
   const [x, y] = monitorCenter(index)
-  seat().warp_pointer(x, y)
+  virtualPointer().notify_absolute_motion(GLib.get_monotonic_time(), x, y)
   await waitFor(() => {
     const [px, py] = global.get_pointer()
-    return px === x && py === y
+    return Math.abs(px - x) <= 1 && Math.abs(py - y) <= 1
   })
 }
 
 async function clickActor(actor) {
-  pointer ??= seat().create_virtual_device(
-    Clutter.InputDeviceType.POINTER_DEVICE,
-  )
+  virtualPointer()
   const [x, y] = actor.get_transformed_position()
   const [w, h] = actor.get_transformed_size()
   const now = () => GLib.get_monotonic_time()
@@ -280,7 +289,7 @@ export async function run() {
   Main.panel.closeCalendar()
   await expectClosed('after secondary clock click')
 
-  const mirror = await waitFor(() => usable(panel._cornerstoneSystemMenu?.child))
+  const mirror = await waitFor(() => usable(panel.statusArea.quickSettings.container.get_child()?.child))
   await clickActor(mirror)
   await expectOpen('quick settings mirror click', secondary)
   assert(ac()._source === mirror, 'source is the quick settings mirror')

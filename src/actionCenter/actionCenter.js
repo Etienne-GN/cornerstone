@@ -119,8 +119,10 @@ class ActionCenterMenu extends PopupMenu.PopupMenu {
 }
 
 export class ActionCenter {
-  constructor(settings) {
+  // `panels` is the PanelSource.
+  constructor(settings, panels) {
     this._settings = settings
+    this._panels = panels
     this._menu = null
     this._source = null
     this._router = null
@@ -222,11 +224,7 @@ export class ActionCenter {
 
     this._captureMessageList()
 
-    this._router = new ActionCenterRouter(
-      this,
-      () => global.dashToPanel?.panels ?? [],
-      this._settings,
-    )
+    this._router = new ActionCenterRouter(this, this._panels, this._settings)
     this._router.enable()
   }
 
@@ -344,7 +342,7 @@ export class ActionCenter {
   }
 
   _fitToSource(sourceActor) {
-    const panel = global.dashToPanel?.panels?.find(
+    const panel = this._panels.dtpPanels.find(
       (p) => p.panelBox?.contains(sourceActor) || p.contains?.(sourceActor),
     )
     const boxPointer = this._menu._boxPointer

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Run one scenario in an isolated GNOME Shell, headless by default.
 # Usage: tests/nested/run.sh <scenario> [--monitors N] [--vertical]
-#        [--viewer] [--with-extension <uuid>]...
+#        [--viewer] [--no-dtp] [--with-extension <uuid>]...
+# The installed Dash to Panel is enabled too unless --no-dtp is given.
 set -euo pipefail
 
 usage() {
   echo "usage: $0 <scenario> [--monitors N] [--vertical] [--viewer]" \
-    "[--with-extension <uuid>]..." >&2
+    "[--no-dtp] [--with-extension <uuid>]..." >&2
   exit 2
 }
 
@@ -20,6 +21,7 @@ shift
 monitors=1
 vertical=0
 viewer=0
+dtp=1
 with_ext=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -36,6 +38,10 @@ while [[ $# -gt 0 ]]; do
       viewer=1
       shift
       ;;
+    --no-dtp)
+      dtp=0
+      shift
+      ;;
     --with-extension)
       [[ $# -ge 2 && "$2" =~ ^[A-Za-z0-9_][A-Za-z0-9_.@-]*$ ]] || usage
       with_ext+=("$2")
@@ -44,6 +50,11 @@ while [[ $# -gt 0 ]]; do
     *) usage ;;
   esac
 done
+
+DTP_UUID=dash-to-panel@jderose9.github.com
+if [[ $dtp -eq 1 && " ${with_ext[*]} " != *" $DTP_UUID "* ]]; then
+  with_ext=("$DTP_UUID" "${with_ext[@]}")
+fi
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$repo/tests/nested/scenarios/$scenario.js"
@@ -168,6 +179,7 @@ nested_env=(
   CORNERSTONE_EXT_DIR="$ext_dir"
   NESTED_MONITORS="$monitors"
   NESTED_VERTICAL="$vertical"
+  NESTED_DTP="$dtp"
   NESTED_LOG="$log"
   DBUS_SYSTEM_BUS_ADDRESS="unix:path=$sysbus_sock"
 )

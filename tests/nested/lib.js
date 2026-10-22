@@ -16,6 +16,48 @@ function readMetadata() {
 export const UUID = readMetadata().uuid
 export const MONITORS = Number(GLib.getenv('NESTED_MONITORS') ?? 1)
 export const VERTICAL = GLib.getenv('NESTED_VERTICAL') === '1'
+export const DTP = GLib.getenv('NESTED_DTP') === '1'
+
+// dash-to-panel's panels once it built one per monitor; [] without it.
+export async function bars() {
+  if (!DTP) return []
+  return waitFor(() => {
+    const panels = global.dashToPanel?.panels
+    return panels?.length === MONITORS && panels
+  })
+}
+
+export const DTP_UUID = 'dash-to-panel@jderose9.github.com'
+
+export function dtpSettings() {
+  return Main.extensionManager
+    .lookup(DTP_UUID)
+    .stateObj.getSettings('org.gnome.shell.extensions.dash-to-panel')
+}
+
+// Every status area with a date menu and system menu: the top bar's and
+// the secondary dash-to-panel panels' own.
+export function statusAreas() {
+  const areas = new Set([Main.panel.statusArea])
+  for (const panel of global.dashToPanel?.panels ?? [])
+    if (panel.statusArea) areas.add(panel.statusArea)
+  return [...areas]
+}
+
+// After Cornerstone is disabled, every slot holds its own button again.
+export function assertSlotsRestored(what) {
+  for (const [i, area] of statusAreas().entries()) {
+    for (const role of ['dateMenu', 'quickSettings']) {
+      const button = area[role]
+      if (!button) continue
+      assert(
+        button.container.get_child() === button,
+        `${what}: ${role} #${i} does not hold its own button`,
+      )
+      assert(button.container.visible, `${what}: ${role} #${i} is hidden`)
+    }
+  }
+}
 
 // Lines of this run's shell log matching `pattern`, for warnings that do not
 // fail a run by themselves.

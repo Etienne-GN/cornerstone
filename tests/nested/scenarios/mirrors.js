@@ -5,6 +5,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js'
 
 import {
+  dtpSettings,
   MONITORS,
   assert,
   disable,
@@ -74,9 +75,11 @@ async function noMirror(what) {
   )
 }
 
+// The mirror's own bin takes the place of the panel's quick settings button
+// inside the container dash-to-panel positions.
 function systemMenuIsMirror(panel) {
-  const actor = panel.allocationMap.systemMenu.actor
-  return actor.get_first_child?.()?._cornerstoneMirror === true
+  const child = panel.statusArea.quickSettings.container.get_child()
+  return child?.get_first_child?.()?._cornerstoneMirror === true
 }
 
 function allocated(actor) {
@@ -103,8 +106,9 @@ export async function run() {
   let panel = await waitFor(secondaryPanel)
   await waitFor(() => systemMenuIsMirror(panel))
   assert(
-    !panel.statusArea.quickSettings.container.visible,
-    'stock quick settings hidden while mirrored',
+    panel.statusArea.quickSettings.container.get_child() !==
+      panel.statusArea.quickSettings,
+    'stock quick settings swapped out while mirrored',
   )
 
   let fake = addFake()
@@ -163,7 +167,7 @@ export async function run() {
 
   const before = await oneMirror('before vertical')
   const index = before.panel.monitor.index
-  settings.set_string('panel-positions', JSON.stringify({ [index]: 'LEFT' }))
+  dtpSettings().set_string('panel-positions', JSON.stringify({ [index]: 'LEFT' }))
   const vertical = await waitFor(() => {
     const p = secondaryPanel()
     return p && p !== before.panel && p.checkIfVertical() && p
@@ -201,7 +205,7 @@ export async function run() {
   )
 
   fake.destroy()
-  settings.set_string('panel-positions', '{}')
+  dtpSettings().set_string('panel-positions', '{}')
 
   done('mirrors')
 }

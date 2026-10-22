@@ -1,13 +1,15 @@
 import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 
 import {
+  DTP,
   MONITORS,
   assert,
+  assertSlotsRestored,
+  bars,
   cycle,
   disable,
   done,
   enable,
-  waitFor,
 } from '../lib.js'
 
 export const METRICS = {}
@@ -19,21 +21,19 @@ export async function run() {
     `expected ${MONITORS} monitors, shell sees ${nMonitors}`,
   )
 
+  await bars()
   await enable()
-  await waitFor(() => global.dashToPanel?.panels?.length === nMonitors)
-
   await cycle(5)
-  await waitFor(() => global.dashToPanel?.panels?.length === nMonitors)
+  await bars()
 
   await disable()
-  assert(
-    Main.panel.get_parent() === Main.layoutManager.panelBox,
-    'Main.panel is back in panelBox after disable',
-  )
-  assert(
-    global.dashToPanel === undefined,
-    'global.dashToPanel is removed after disable',
-  )
+  assertSlotsRestored('after disable')
+  if (DTP)
+    assert(global.dashToPanel?.panels?.length === nMonitors,
+      'dash-to-panel keeps its panels after Cornerstone is disabled')
+  else
+    assert(Main.panel.get_parent() === Main.layoutManager.panelBox,
+      'the top bar is untouched')
 
   done('smoke')
 }

@@ -24,6 +24,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 
 import * as Utils from '../utils.js'
 import { MirroredIndicatorButton } from './mirroredIndicatorButton.js'
+import { Slots } from '../slots.js'
 import { clearCatalog, dtpPrimaryIndex, publishCatalog } from './catalog.js'
 import { BOX_NAMES, planMirrors } from './plan.js'
 import { VISIBILITY_KEY, indicatorIsEnabled, monitorKey } from './policy.js'
@@ -48,6 +49,9 @@ export class MirrorController {
     this._watched = new Set()
     this._shellPanelAlive = true
     this._mainPanelGone = false
+    this._slots = new Slots()
+    // Set by whoever owns the system menu slot instead (the one button).
+    this.skipQuickSettings = () => false
     this._signalsHandler = new Utils.GlobalSignalsHandler()
     this._timeoutsHandler = new Utils.TimeoutsHandler()
 
@@ -77,7 +81,7 @@ export class MirrorController {
     }
   }
 
-  // Called on every dash-to-panel `panels-created`.
+  // Called whenever the PanelSource changes, with dash-to-panel's panels.
   attach(panels) {
     this.detach()
     this._panelManager = panels[0]?.panelManager ?? null
@@ -85,8 +89,9 @@ export class MirrorController {
     this._refreshNow()
   }
 
-  // Must run while the panels are still enabled, before dash-to-panel
-  // destroys their boxes.
+  // The panels may already be destroyed: mirrors in their boxes went with
+  // them, and the quick settings containers dash-to-panel keeps for reuse
+  // get their own button back.
   detach() {
     this._timeoutsHandler.removeWithLabel(REFRESH)
     for (const panel of this._panels) {
@@ -96,6 +101,7 @@ export class MirrorController {
         console.error('[cornerstone] mirror detach', e)
       }
     }
+    this._slots.releaseAll()
     this._panels = []
     this._states.clear()
   }
@@ -300,27 +306,31 @@ export class MirrorController {
     entry?.mirror.destroy()
   }
 
-  // The mirror takes SYSTEM_MENU's slot in the panel's allocation map; the
-  // panel's own quick settings stay cached by dash-to-panel and come back
-  // when mirroring stops.
+  // The mirror takes the panel's quick settings container, so dash-to-panel
+  // keeps positioning it; the panel's own button comes back when mirroring
+  // stops.
   _syncQuickSettings(panel, state) {
     const source = Main.panel.statusArea[QUICK_SETTINGS]
-    if (state.quickSettings?.source === source) return
+    const container = panel.statusArea?.[QUICK_SETTINGS]?.container
+    const current = state.quickSettings
+    if (
+      current?.source === source &&
+      container &&
+      this._slots.owner(container) === current.mirror.container &&
+      !this.skipQuickSettings()
+    )
+      return
 
     this._destroyQuickSettings(panel, state)
-    if (!source) return
+    if (!source || !container || this.skipQuickSettings()) return
 
     const entry = this._createMirror(panel, state, QUICK_SETTINGS, false)
     if (!entry) return
 
     state.quickSettings = entry
-    panel.panel.add_child(entry.mirror.container)
+    this._slots.swap(container, entry.mirror.container)
     if (state.host.vertical) panel._setVertical(entry.mirror.container, true)
     entry.mirror.syncOrientation(state.host.vertical)
-    panel.statusArea[QUICK_SETTINGS]?.container.hide()
-    panel._cornerstoneSystemMenu = entry.mirror.container
-    panel._setAllocationMap()
-    panel.updateElementPositions()
   }
 
   _destroyQuickSettings(panel, state) {
@@ -331,11 +341,8 @@ export class MirrorController {
   }
 
   _restoreSystemMenu(panel) {
-    if (!panel._cornerstoneSystemMenu) return
-
-    delete panel._cornerstoneSystemMenu
-    panel._setAllocationMap()
-    panel.updateElementPositions()
+    const container = panel.statusArea?.[QUICK_SETTINGS]?.container
+    if (container) this._slots.release(container)
   }
 
   _clearPanel(panel) {

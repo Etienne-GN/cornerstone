@@ -4,6 +4,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js'
 
 import {
+  assertSlotsRestored,
   MONITORS,
   assert,
   disable,
@@ -55,10 +56,6 @@ export async function run() {
   const fake = addFake()
 
   await enableAndMirror()
-  const bars = global.dashToPanel.panels.flatMap((p) =>
-    p.isStandalone ? [p.clipContainer, p.panelBox, p] : [p.clipContainer, p],
-  )
-
   const faulty = stageMirrors().find((a) => a._role === ROLE)
   const cleanup = faulty._cleanup.bind(faulty)
   faulty._cleanup = () => {
@@ -80,17 +77,8 @@ export async function run() {
       logLines(new RegExp(`\\[cornerstone\\] ${context}.*${INJECTED}`)).length,
       `${context} error logged`,
     )
-  assert(
-    Main.panel.get_parent() === Main.layoutManager.panelBox,
-    'Main.panel is back in panelBox',
-  )
-  assert(global.dashToPanel === undefined, 'global.dashToPanel removed')
   assert(stageMirrors().length === 0, 'no _cornerstoneMirror actor after disable')
-  const onStage = new Set(stageActors())
-  assert(
-    bars.every((bar) => !onStage.has(bar)),
-    'no Cornerstone bar left on stage',
-  )
+  assertSlotsRestored('after a faulty disable')
 
   await enableAndMirror()
   await disable()

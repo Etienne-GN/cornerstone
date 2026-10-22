@@ -87,12 +87,15 @@ test('metadata declares the Cornerstone identity', () => {
   assertIdentity(repo, 'cornerstone', 'Cornerstone')
 })
 
-test('no upstream identity literals remain in code', () => {
+// Cornerstone names dash-to-panel's UUID in one place, to follow it.
+test('dash-to-panel is only named by the panel source', () => {
   const found = grepLiterals(
     repo,
     'dash-to-panel@jderose9|org\\.gnome\\.shell\\.extensions\\.dash-to-panel',
   )
-  assert.equal(found, '')
+    .split('\n')
+    .filter((line) => line && !line.startsWith('src/panels.js:'))
+  assert.deepEqual(found, [])
 })
 
 test('rename.sh rewrites the identity on a worktree copy', () => {
