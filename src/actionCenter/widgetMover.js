@@ -15,10 +15,16 @@ export class WidgetMover {
         index: parent ? parent.get_children().indexOf(actor) : -1,
       }
       this._records.push(record)
+      // An actor destroyed while moved has nothing to go back.
+      actor.connectObject?.('destroy', () => this._forget(actor), this)
     }
 
     const current = actor.get_parent()
-    if (current === newParent) return
+    if (current === newParent) {
+      if (index >= 0 && newParent.get_child_at_index(index) !== actor)
+        newParent.set_child_at_index(actor, index)
+      return
+    }
 
     current?.remove_child(actor)
     if (index < 0) newParent.add_child(actor)
@@ -31,7 +37,12 @@ export class WidgetMover {
     if (index < 0) return
 
     const [record] = this._records.splice(index, 1)
+    actor.disconnectObject?.(this)
     this._restore(record)
+  }
+
+  _forget(actor) {
+    this._records = this._records.filter((r) => r.actor !== actor)
   }
 
   isMoved(actor) {
@@ -43,6 +54,7 @@ export class WidgetMover {
     this._records = []
 
     for (const record of records) {
+      record.actor.disconnectObject?.(this)
       try {
         this._restore(record)
       } catch (e) {

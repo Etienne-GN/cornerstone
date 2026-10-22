@@ -178,6 +178,12 @@ export const MirroredIndicatorButton = GObject.registerClass(
       return this._isEmpty
     }
 
+    // What the source's menu opens against: this mirror, or the overflow
+    // button when the mirror sits in an overflow popup.
+    get _anchor() {
+      return this._host?.anchor?.() ?? this
+    }
+
     _isVertical() {
       return this._vertical ?? !!this._host?.vertical
     }
@@ -2067,7 +2073,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
     }
 
     _openQuickSettingsMirroredMenu() {
-      const monitorIndex = Main.layoutManager.findIndexForActor(this)
+      const monitorIndex = Main.layoutManager.findIndexForActor(this._anchor)
       const menu = this._sourceIndicator?.menu
       if (!menu) return Clutter.EVENT_PROPAGATE
 
@@ -2081,11 +2087,11 @@ export const MirroredIndicatorButton = GObject.registerClass(
       let untrack = null
 
       const keepAnchoredToMirror = () => {
-        menu.sourceActor = this
+        menu.sourceActor = this._anchor
         for (const actor of [menu.box, menu._boxPointer]) {
           if (!actor) continue
 
-          actor._sourceActor = this
+          actor._sourceActor = this._anchor
           actor._sourceAllocation = null
         }
       }
@@ -2411,7 +2417,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       // If we found a menu, anchor it to the mirrored button on this
       // monitor, using the same BoxPointer override as normal menus.
       if (arcMenu && arcMenu.sourceActor) {
-        const monitorIndex = Main.layoutManager.findIndexForActor(this)
+        const monitorIndex = Main.layoutManager.findIndexForActor(this._anchor)
         const originalSourceActor = arcMenu.sourceActor
         const originalBoxPointer = arcMenu.box?._sourceActor
         let menuBoxState = null
@@ -2428,7 +2434,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         this.add_style_pseudo_class('active')
 
         // Temporarily change sourceActor to this button for positioning
-        arcMenu.sourceActor = this
+        arcMenu.sourceActor = this._anchor
 
         if (arcMenu.box) {
           menuBoxState = this._updateMenuPositioning(arcMenu, monitorIndex)
@@ -2541,7 +2547,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       const sourceActorState = []
 
       this.add_style_pseudo_class('active')
-      menu.sourceActor = this
+      menu.sourceActor = this._anchor
 
       for (const actor of [menu.box, menu._boxPointer]) {
         if (!actor) continue
@@ -2551,7 +2557,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
           sourceActor: actor._sourceActor,
           sourceAllocation: actor._sourceAllocation,
         })
-        actor._sourceActor = this
+        actor._sourceActor = this._anchor
         actor._sourceAllocation = null
       }
 
@@ -2592,10 +2598,10 @@ export const MirroredIndicatorButton = GObject.registerClass(
         }
 
         if (deferSourceRestore) {
-          menu.sourceActor = this
-          if (menu.box) menu.box._sourceActor = this
+          menu.sourceActor = this._anchor
+          if (menu.box) menu.box._sourceActor = this._anchor
           for (const state of sourceActorState) {
-            state.actor._sourceActor = this
+            state.actor._sourceActor = this._anchor
             state.actor._sourceAllocation = null
           }
 
@@ -2649,7 +2655,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
     }
 
     _openCustomPopupMenu(popupMenu) {
-      const monitorIndex = Main.layoutManager.findIndexForActor(this)
+      const monitorIndex = Main.layoutManager.findIndexForActor(this._anchor)
       const originalSourceActor = popupMenu.sourceActor
 
       // Close the menu if it's already open
@@ -2662,7 +2668,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       this.add_style_pseudo_class('active')
 
       // Update popup's sourceActor to position correctly
-      popupMenu.sourceActor = this
+      popupMenu.sourceActor = this._anchor
 
       // Update positioning for the correct monitor
       if (popupMenu.box) {
@@ -2727,10 +2733,10 @@ export const MirroredIndicatorButton = GObject.registerClass(
       let untrack = null
 
       const keepAnchoredToMirror = () => {
-        menu.sourceActor = this
+        menu.sourceActor = this._anchor
         for (const actor of [menu.box, menu._boxPointer]) {
           if (!actor) continue
-          actor._sourceActor = this
+          actor._sourceActor = this._anchor
           actor._sourceAllocation = null
         }
       }
@@ -2859,11 +2865,11 @@ export const MirroredIndicatorButton = GObject.registerClass(
       let untrack = null
 
       const keepAnchoredToMirror = () => {
-        menu.sourceActor = this
+        menu.sourceActor = this._anchor
         for (const actor of [menu.box, menu._boxPointer]) {
           if (!actor) continue
 
-          actor._sourceActor = this
+          actor._sourceActor = this._anchor
           actor._sourceAllocation = null
         }
       }
@@ -3021,7 +3027,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       state.removedConstraints = []
     }
 
-    _updateMenuPositioning(menu, monitorIndex, sourceActor = this) {
+    _updateMenuPositioning(menu, monitorIndex, sourceActor = this._anchor) {
       const menuBox = menu._boxPointer || menu.box
       if (!menuBox) return null
 
@@ -3115,7 +3121,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
     // appears to do nothing. _reposition handles extended monitors via
     // Main.layoutManager.findIndexForActor() and uses the box's actual
     // size at allocate time, so it doesn't have that timing dependency.
-    _updateMenuPositioningNative(menu, sourceActor = this) {
+    _updateMenuPositioningNative(menu, sourceActor = this._anchor) {
       const menuBox = menu._boxPointer || menu.box
       if (!menuBox) return null
 
