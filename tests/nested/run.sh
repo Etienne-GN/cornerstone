@@ -144,6 +144,8 @@ welcome-dialog-last-shown-version='999'
 
 [org/gnome/desktop/interface]
 enable-animations=false
+# A virtual pointer starts at 0,0 and would open the overview.
+enable-hot-corners=false
 EOF
 
 sysbus_sock="$work/system_bus_socket"

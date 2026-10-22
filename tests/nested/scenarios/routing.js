@@ -11,6 +11,7 @@ import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js'
 
 import {
   useClassicLayout,
+  dtpSettings,
   MONITORS,
   assert,
   disable,
@@ -74,13 +75,20 @@ function virtualPointer() {
 }
 
 // warp_pointer does nothing in a headless 51 shell; a virtual device moves.
+// A device just created drops its first events, so motion is sent again
+// until the pointer arrives.
 async function warpTo(index) {
   const [x, y] = monitorCenter(index)
-  virtualPointer().notify_absolute_motion(GLib.get_monotonic_time(), x, y)
   await waitFor(() => {
     const [px, py] = global.get_pointer()
-    return Math.abs(px - x) <= 1 && Math.abs(py - y) <= 1
+    if (Math.abs(px - x) <= 1 && Math.abs(py - y) <= 1) return true
+    virtualPointer().notify_absolute_motion(GLib.get_monotonic_time(), x, y)
+    return false
   })
+  // The pointer starts in the hot corner, which opens the overview once the
+  // device first reports; the overview hides the secondary bars.
+  Main.overview.hide()
+  await waitFor(() => !Main.overview.visible && !Main.overview.animationInProgress)
 }
 
 async function clickActor(actor) {
@@ -364,7 +372,7 @@ export async function run() {
   await expectClosed('rebuilt secondary clock closed')
 
   // Vertical secondary bar on the left.
-  settings().set_string(
+  dtpSettings().set_string(
     'panel-positions',
     JSON.stringify({ [secondary]: 'LEFT' }),
   )
@@ -383,7 +391,7 @@ export async function run() {
   assertInside(geometry, 'vertical bar', `monitor ${secondary}`)
   Main.panel.closeCalendar()
   await expectClosed('vertical bar closed')
-  settings().set_string('panel-positions', '{}')
+  dtpSettings().set_string('panel-positions', '{}')
   panel = await waitFor(() => {
     const p = secondaryPanel()
     return p && !p.checkIfVertical() && usable(p.statusArea.dateMenu) && p
