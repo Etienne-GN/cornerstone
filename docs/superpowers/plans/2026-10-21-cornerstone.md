@@ -88,27 +88,35 @@ Ends with: every bar shows one Cornerstone button (system indicators then
 clock) in the date menu slot; the system menu slot is hidden; clicking it
 opens the Action Center on that monitor; disable restores both slots.
 
-- [ ] 2.1 `src/button/slots.js`: `SlotSwap` from the spike, generalized:
+- [x] 2.1 `src/button/slots.js`: `SlotSwap` from the spike, generalized:
   per-container tracking, keep-hidden containers, restore, follows
   `PanelSource`.
-- [ ] 2.2 `src/button/clock.js`: own clock label from
+- [x] 2.2 `src/button/clock.js`: own clock label from
   `GnomeDesktop.WallClock` (`notify::clock`), formatting with
   `GLib.DateTime.format()`; presets and custom format; second line for the
   date.
-- [ ] 2.3 `src/button/indicators.js`: one `Clutter.Clone` per child of the
+- [x] 2.3 `src/button/indicators.js`: one `Clutter.Clone` per child of the
   primary quick settings indicator box, visibility bound to the source;
   order and per-item visibility from settings. Verify in the nested shell
   that clones paint while the source container is hidden; otherwise keep
   the source in an off-screen mapped holder.
-- [ ] 2.4 `src/button/cornerstoneButton.js`: the bar button (PanelMenu
+- [x] 2.4 `src/button/cornerstoneButton.js`: the bar button (PanelMenu
   styling, `:active` while the Action Center is open), click and keyboard
   open the Action Center for its monitor; vertical bars supported.
-- [ ] 2.5 Wiring: setting `one-button` (default on, needs the Action
+- [x] 2.5 Wiring: setting `one-button` (default on, needs the Action
   Center); router sources prefer the button; the mirror controller skips
   its quick settings mirror while the button owns the slot.
-- [ ] 2.6 Nested scenario `button`: two monitors, with and without
+- [x] 2.6 Nested scenario `button`: two monitors, with and without
   dash-to-panel, rebuild, disable/enable dash-to-panel, Cornerstone
   disable restores; stage captures.
+
+Phase 2 result: `button` passes with and without dash-to-panel. Clones of
+the quick settings indicators paint while their container is hidden (and
+at their natural size, sharper than clones of the allocated originals), so
+every bar, the top bar included, uses clones. The slot module is
+`src/slots.js` rather than `src/button/slots.js`, shared with the mirror.
+Scenarios written for the separate clock and system menu call
+`useClassicLayout()` first.
 
 ## Phase 3: Action Center layout
 
