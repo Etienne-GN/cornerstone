@@ -45,34 +45,42 @@ GNU make, `node --test` unit tests, headless nested shell
 Ends with: stock dash-to-panel + Cornerstone give the same mirroring and
 Action Center as Omnibar did; no dash-to-panel file left.
 
-- [ ] 1.1 `src/panels.js`: `PanelSource`. Lists bars as adapters
+- [x] 1.1 `src/panels.js`: `PanelSource`. Lists bars as adapters
   `{ monitorIndex, isPrimary, statusArea, boxes, menuManager, vertical,
   position, actor, dtp }` built from dash-to-panel panels or `Main.panel`.
   Follows `panels-created` and `extension-state-changed` (reconnecting
   when `global.dashToPanel` is replaced), emits `changed` after the bars
   settle. Unit tested with fakes.
-- [ ] 1.2 `src/signals.js`: the two helpers the mirror uses from
+- [x] 1.2 `src/signals.js`: the two helpers the mirror uses from
   dash-to-panel's `utils.js` (labelled timeouts; signal groups), or
   replace them with `connectObject` and GLib sources directly.
-- [ ] 1.3 Mirror controller on `PanelSource`: secondary bars only; the
+- [x] 1.3 Mirror controller on `PanelSource`: secondary bars only; the
   quick settings mirror takes the bar's `quickSettings` container by
   swapping its child (as the spike did), replacing the `panel.js` hook.
-- [ ] 1.4 Router and Action Center on `PanelSource`: buttons, banner
+- [x] 1.4 Router and Action Center on `PanelSource`: buttons, banner
   clicks, keyboard shortcuts, `_fitToSource` without dash-to-panel
   internals beyond the adapter.
-- [ ] 1.5 New `extension.js` (`CornerstoneExtension`): settings,
+- [x] 1.5 New `extension.js` (`CornerstoneExtension`): settings,
   `PanelSource`, `MirrorController`, `ActionCenter`; isolated teardown;
   stale-enable guard kept.
-- [ ] 1.6 Purge: delete every dash-to-panel module, UI file, image, media
+- [x] 1.6 Purge: delete every dash-to-panel module, UI file, image, media
   and translation; schema keeps only Cornerstone keys; Makefile packs
   `src/**`; metadata description/url/version; new minimal `prefs.js`
   (Adw window hosting the existing Action Center and mirror rows).
-- [ ] 1.7 Tests: unit tests for removed modules go; lifecycle test
+- [x] 1.7 Tests: unit tests for removed modules go; lifecycle test
   rewritten for the new `extension.js`; nested scenarios run with
   `--with-extension dash-to-panel@jderose9.github.com` (run.sh `--dtp`
   shorthand) and also without it where meaningful.
-- [ ] 1.8 Docs: README (companion, credits), SWITCHING.md (from Omnibar or
+- [x] 1.8 Docs: README (companion, credits), SWITCHING.md (from Omnibar or
   dash-to-panel + MMB to dash-to-panel + Cornerstone), RENAMING.md.
+
+Phase 1 result (2026-10-21, GNOME 51.1, dash-to-panel v74): unit tests
+pass; nested smoke (with and without dash-to-panel), actionCenter,
+disable-fault, mirrors (also vertical), prefs and static-copy pass.
+Still failing on 51, as before the purge: `routing` (virtual pointer
+motion does not move the pointer in a headless 51 shell) and `acLayout`
+(popup height; reworked in Phase 3). `teardown` needs AppIndicator, not
+installed on this machine.
 
 ## Phase 2: the one button
 
