@@ -2,7 +2,7 @@
 
 Spec: docs/superpowers/specs/2026-10-21-cornerstone-design.md
 Repo: ~/projects/cornerstone, branch `cornerstone` (pushed to
-github.com/Etienne-GN/cornerstone). `main` is still the Omnibar fork.
+github.com/Etienne-GN/cornerstone). `main` was fast-forwarded to it on 2026-10-22.
 
 ## Environment
 
