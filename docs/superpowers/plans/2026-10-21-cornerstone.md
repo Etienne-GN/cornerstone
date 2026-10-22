@@ -138,17 +138,26 @@ today, calendar, events, world-clocks, weather.
 
 ## Phase 4: tray organization
 
-- [ ] 4.1 Settings model `tray-layout` (JSON per monitor key: ordered
+- [x] 4.1 Settings model `tray-layout` (JSON per monitor key: ordered
   roles with `box` and `state` = shown | overflow | hidden) with pure
   helpers (read, defaults for new roles, move, set state); unit tested.
   Migrates `mirror-indicator-visibility` once.
-- [ ] 4.2 Primary bar: order and hide real indicators within GNOME's
+- [x] 4.2 Primary bar: order and hide real indicators within GNOME's
   boxes via `WidgetMover`, restored on disable.
-- [ ] 4.3 Secondary bars: mirrors placed by the same model.
-- [ ] 4.4 Overflow: a chevron button per bar holding the overflowed
+- [x] 4.3 Secondary bars: mirrors placed by the same model.
+- [x] 4.4 Overflow: a chevron button per bar holding the overflowed
   icons (real ones on the primary, mirrors elsewhere) in a small popup;
   menus open on that monitor; hidden when empty.
-- [ ] 4.5 Nested scenario `tray`.
+- [x] 4.5 Nested scenario `tray`.
+
+Phase 4 result: `tray` passes, with every earlier scenario. The overflow
+holds mirrors on every bar, the top bar included (its real icons wait in
+an on-stage hidden holder, which keeps their clones painting), so icon
+menus open against the chevron the same way everywhere. The overflow is a
+row rather than a grid: panel buttons have no height outside a bar, which
+Clutter.FlowLayout collapses. No migration was written: the old
+`mirror-indicator-visibility` switches act as the default state of icons
+the tray layout does not list.
 
 ## Phase 5: preferences
 
