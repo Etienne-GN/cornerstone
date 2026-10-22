@@ -1,4 +1,4 @@
-# Renaming the fork
+# Renaming the extension
 
 `metadata.json` is the single source of identity. The Makefile reads `uuid`,
 `settings-schema`, `gettext-domain` and `name` from it, and the extension
@@ -31,9 +31,6 @@ Review with `git diff`, then run `npm test` and
 
 ## Deliberately unchanged
 
-- `global.dashToPanel` and the `dashtopanel*` CSS and actor names, kept for
-  compatibility with extensions that depend on them
-- upstream license headers and the Dash to Panel credits
-- the translated strings in `po/*.po`, whose msgids still say "Dash to Panel"
-  where they were not parameterised
+- `dash-to-panel@jderose9.github.com` in `src/panels.js`: Cornerstone follows
+  that extension, it is not Cornerstone's own identity
 - the `gettext-domain` attribute inside the schema file
