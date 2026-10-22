@@ -27,6 +27,7 @@ import { IndicatorStrip } from './indicators.js'
 import { elementOrder } from './order.js'
 
 const ELEMENTS_KEY = 'button-elements'
+const SPACING_KEY = 'button-spacing'
 
 export const CornerstoneButton = GObject.registerClass(
   { GTypeName: 'CornerstoneButton' },
@@ -55,6 +56,8 @@ export const CornerstoneButton = GObject.registerClass(
       config.connectObject(
         `changed::${ELEMENTS_KEY}`,
         () => this._syncElements(),
+        `changed::${SPACING_KEY}`,
+        () => this._syncSpacing(),
         this,
       )
       this.connect('destroy', () => {
@@ -65,6 +68,11 @@ export const CornerstoneButton = GObject.registerClass(
         config.destroy()
       })
       this._syncElements()
+      this._syncSpacing()
+    }
+
+    _syncSpacing() {
+      this._box.style = `spacing: ${this._config.get_int(SPACING_KEY)}px;`
     }
 
     // The monitor whose settings the button follows.

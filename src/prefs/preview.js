@@ -111,6 +111,7 @@ export const ButtonPreview = GObject.registerClass(
       this._ids.push(
         config.connect('changed::clock-format', () => this._syncClock()),
         config.connect('changed::clock-font', () => this._syncClock()),
+        config.connect('changed::button-spacing', () => this._syncSpacing()),
       )
       this._desktopId = this._desktop.connect('changed', () =>
         this._syncClock(),
@@ -121,6 +122,11 @@ export const ButtonPreview = GObject.registerClass(
       })
       this._syncLayout()
       this._syncClock()
+      this._syncSpacing()
+    }
+
+    _syncSpacing() {
+      this._button.spacing = this._config.get_int('button-spacing')
     }
 
     // Called when the preferences window closes.

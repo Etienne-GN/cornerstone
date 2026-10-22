@@ -87,11 +87,20 @@ async function checkButtonPage() {
     settings.get_string('clock-format') === CLOCK_PRESETS[1],
     'a preset writes its format',
   )
-  assert(!page._customRow.visible, 'custom field hidden for a preset')
+  assert(
+    page._customRow.text === CLOCK_PRESETS[1],
+    'More options shows the preset to start from',
+  )
   page._formatRow.selected = CLOCK_PRESETS.length
-  assert(page._customRow.visible, 'custom field shown for Custom')
   page._customRow.text = '%H:%M\\n%a'
   page._customRow.emit('apply')
+  assert(
+    page._formatRow.selected === CLOCK_PRESETS.length,
+    'an own format shows as Custom',
+  )
+  page.spacingRow.value = 14
+  assert(settings.get_int('button-spacing') === 14, 'spacing saved')
+  assert(page._preview._button.spacing === 14, 'preview follows spacing')
   assert(
     settings.get_string('clock-format') === '%H:%M\n%a',
     `custom format written: ${JSON.stringify(settings.get_string('clock-format'))}`,

@@ -96,7 +96,9 @@ export async function run() {
   s.set_string('clock-format', '%a %d  %H:%M:%S')
   s.set_string('clock-font', 'Sans Bold 13')
   s.set_strv('button-elements', ['clock', 'indicators'])
+  s.set_int('button-spacing', 20)
   await sleep(1200)
+  assert(first._box.style.includes('20px'), `spacing: "${first._box.style}"`)
   assert(/\d\d:\d\d:\d\d$/.test(clock.text), `custom format: "${clock.text}"`)
   assert(clock.style.includes('font-weight: 700'), `font: "${clock.style}"`)
   assert(first._box.get_first_child() === clock, 'clock moved first')
@@ -114,6 +116,7 @@ export async function run() {
     'clock-font',
     'button-elements',
     'button-hidden-indicators',
+    'button-spacing',
   ])
     s.reset(key)
 

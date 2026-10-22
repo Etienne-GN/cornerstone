@@ -122,6 +122,7 @@ export class ButtonPage {
     this._buildElements()
     this._buildIndicators()
     this._buildClock()
+    this._buildMore()
     this._syncMonitors()
   }
 
@@ -233,6 +234,7 @@ export class ButtonPage {
       this._elementGroup,
       this._indicatorGroup,
       this._clockGroup,
+      this._moreGroup,
     ])
       group.sensitive = editable
   }
@@ -398,8 +400,44 @@ export class ButtonPage {
     })
     group.add(this._formatRow)
 
+    this._formatRow.connect('notify::selected', () => {
+      if (this._syncing) return
+      const index = this._formatRow.selected
+      if (index < CLOCK_PRESETS.length)
+        this._config.set_string('clock-format', CLOCK_PRESETS[index])
+      // Custom: write it under More options, starting from the format now.
+      else this._customRow.grab_focus()
+    })
+
+    const fontButton = new Gtk.FontDialogButton({
+      dialog: new Gtk.FontDialog(),
+      use_font: true,
+      valign: Gtk.Align.CENTER,
+    })
+    this._fontRow = new Adw.ActionRow({ title: _('Font') })
+    this._fontRow.add_suffix(fontButton)
+    group.add(this._fontRow)
+    this._fontButton = fontButton
+    fontButton.connect('notify::font-desc', () => {
+      if (this._syncing) return
+      const desc = fontButton.font_desc
+      this._config.set_string('clock-font', desc ? desc.to_string() : '')
+    })
+    this._connect('clock-font', () => this._syncFont())
+    this._syncFont()
+  }
+
+  // Less common settings: your own clock format and the button's spacing.
+  _buildMore() {
+    const group = new Adw.PreferencesGroup({
+      title: _('More options'),
+      header_suffix: resetButton(this._config, ['button-spacing']),
+    })
+    this.page.add(group)
+    this._moreGroup = group
+
     this._customRow = new Adw.EntryRow({
-      title: _('Custom format'),
+      title: _('Clock format'),
       show_apply_button: true,
     })
     this._customRow.connect('apply', () =>
@@ -412,7 +450,7 @@ export class ButtonPage {
 
     const codes = new Adw.ExpanderRow({
       title: _('Format codes'),
-      subtitle: _('Click a code to add it to the custom format.'),
+      subtitle: _('Click a code to add it to the clock format.'),
     })
     for (const [code, label] of FORMAT_CODES) {
       const row = new Adw.ActionRow({
@@ -435,33 +473,30 @@ export class ButtonPage {
     }
     group.add(codes)
     this._codesRow = codes
-
-    this._formatRow.connect('notify::selected', () => {
-      if (this._syncing) return
-      const index = this._formatRow.selected
-      if (index < CLOCK_PRESETS.length)
-        this._config.set_string('clock-format', CLOCK_PRESETS[index])
-      else this._syncFormatRows(true)
-    })
     this._connect('clock-format', () => this._syncFormat())
     this._syncFormat()
 
-    const fontButton = new Gtk.FontDialogButton({
-      dialog: new Gtk.FontDialog(),
-      use_font: true,
-      valign: Gtk.Align.CENTER,
-    })
-    this._fontRow = new Adw.ActionRow({ title: _('Font') })
-    this._fontRow.add_suffix(fontButton)
-    group.add(this._fontRow)
-    this._fontButton = fontButton
-    fontButton.connect('notify::font-desc', () => {
+    this.spacingRow = Adw.SpinRow.new_with_range(0, 32, 1)
+    this.spacingRow.title = _('Spacing')
+    this.spacingRow.subtitle = _(
+      'Pixels between the system indicators and the clock.',
+    )
+    this.spacingRow.connect('notify::value', () => {
       if (this._syncing) return
-      const desc = fontButton.font_desc
-      this._config.set_string('clock-font', desc ? desc.to_string() : '')
+      this._config.set_int('button-spacing', this.spacingRow.value)
     })
-    this._connect('clock-font', () => this._syncFont())
-    this._syncFont()
+    group.add(this.spacingRow)
+    this._connect('button-spacing', () => this._syncSpacing())
+    this._syncSpacing()
+  }
+
+  _syncSpacing() {
+    this._syncing = true
+    try {
+      this.spacingRow.value = this._config.get_int('button-spacing')
+    } finally {
+      this._syncing = false
+    }
   }
 
   _syncFormat() {
@@ -470,16 +505,11 @@ export class ButtonPage {
     this._syncing = true
     try {
       this._formatRow.selected = preset < 0 ? CLOCK_PRESETS.length : preset
-      if (preset < 0) this._customRow.text = escapeFormat(format)
+      // Empty follows GNOME: the field's title says what to type.
+      this._customRow.text = escapeFormat(format)
     } finally {
       this._syncing = false
     }
-    this._syncFormatRows(preset < 0)
-  }
-
-  _syncFormatRows(custom) {
-    this._customRow.visible = custom
-    this._codesRow.visible = custom
   }
 
   _syncFont() {

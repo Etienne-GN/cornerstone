@@ -92,6 +92,14 @@ export const ButtonConfig = GObject.registerClass(
       return this._value(key)
     }
 
+    get_int(key) {
+      return this._value(key)
+    }
+
+    set_int(key, value) {
+      this._set(key, value)
+    }
+
     set_strv(key, value) {
       this._set(key, value)
     }
@@ -116,9 +124,14 @@ export const ButtonConfig = GObject.registerClass(
     }
 
     _global(key) {
-      return BUTTON_KEYS[key] === 'as'
-        ? this._settings.get_strv(key)
-        : this._settings.get_string(key)
+      switch (BUTTON_KEYS[key]) {
+        case 'as':
+          return this._settings.get_strv(key)
+        case 'i':
+          return this._settings.get_int(key)
+        default:
+          return this._settings.get_string(key)
+      }
     }
 
     _value(key) {
@@ -131,7 +144,9 @@ export const ButtonConfig = GObject.registerClass(
 
     _set(key, value) {
       if (!this.hasOverride) {
-        if (BUTTON_KEYS[key] === 'as') this._settings.set_strv(key, value)
+        const type = BUTTON_KEYS[key]
+        if (type === 'as') this._settings.set_strv(key, value)
+        else if (type === 'i') this._settings.set_int(key, value)
         else this._settings.set_string(key, value)
         return
       }

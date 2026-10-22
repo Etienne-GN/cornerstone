@@ -25,6 +25,7 @@ export const BUTTON_KEYS = {
   'button-hidden-indicators': 'as',
   'clock-format': 's',
   'clock-font': 's',
+  'button-spacing': 'i',
 }
 
 function isPlainObject(value) {
@@ -34,6 +35,7 @@ function isPlainObject(value) {
 export function validValue(key, value) {
   const type = BUTTON_KEYS[key]
   if (type === 's') return typeof value === 'string'
+  if (type === 'i') return Number.isInteger(value)
   if (type === 'as')
     return Array.isArray(value) && value.every((v) => typeof v === 'string')
   return false
