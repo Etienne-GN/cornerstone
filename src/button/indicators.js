@@ -22,6 +22,8 @@ import St from 'gi://St'
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 
+import { orderIndicators } from './order.js'
+
 const HIDDEN_KEY = 'button-hidden-indicators'
 const ORDER_KEY = 'button-indicator-order'
 
@@ -43,18 +45,6 @@ export function indicatorNames(quickSettings) {
     seen.set(base, n)
     return { child, name: n > 1 ? `${base}#${n}` : base }
   })
-}
-
-// Names in `order` first, in that order; the rest keep GNOME's order.
-export function orderIndicators(entries, order) {
-  const rank = (name) => {
-    const index = order.indexOf(name)
-    return index < 0 ? order.length : index
-  }
-  return entries
-    .map((entry, index) => ({ entry, index }))
-    .sort((a, b) => rank(a.entry.name) - rank(b.entry.name) || a.index - b.index)
-    .map(({ entry }) => entry)
 }
 
 export const IndicatorStrip = GObject.registerClass(

@@ -24,17 +24,9 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js'
 
 import { ClockLabel } from './clock.js'
 import { IndicatorStrip } from './indicators.js'
+import { elementOrder } from './order.js'
 
 const ELEMENTS_KEY = 'button-elements'
-export const ELEMENTS = ['indicators', 'clock']
-
-// Known elements in the user's order, each once; empty falls back to all.
-export function elementOrder(saved) {
-  const order = saved.filter(
-    (name, index) => ELEMENTS.includes(name) && saved.indexOf(name) === index,
-  )
-  return order.length ? order : [...ELEMENTS]
-}
 
 export const CornerstoneButton = GObject.registerClass(
   { GTypeName: 'CornerstoneButton' },

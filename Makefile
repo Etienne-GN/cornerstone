@@ -10,9 +10,8 @@ $(if $(SCHEMA),,$(error cannot read settings-schema from metadata.json))
 $(if $(DOMAIN),,$(error cannot read gettext-domain from metadata.json))
 
 MODULES = src/*.js src/stylesheet.css metadata.json COPYING README.md
-SUBDIRS = mirror actionCenter button tray
-UI_MODULES = ui/*.ui
-TOLOCALIZE = src/*.js src/mirror/*.js src/actionCenter/*.js src/button/*.js src/tray/*.js
+SUBDIRS = mirror actionCenter button tray prefs
+TOLOCALIZE = $(wildcard src/*.js src/*/*.js)
 MSGSRC = $(wildcard po/*.po)
 
 INSTALLBASE = $(HOME)/.local/share/gnome-shell/extensions
@@ -37,11 +36,10 @@ mergepo: potfile
 		msgmerge -U $$l ./po/$(DOMAIN).pot; \
 	done;
 
-./po/$(DOMAIN).pot: $(TOLOCALIZE) $(UI_MODULES)
+./po/$(DOMAIN).pot: $(TOLOCALIZE)
 	mkdir -p po
 	xgettext -k_ -kN_ -o po/$(DOMAIN).pot --package-name "$(NAME)" \
 		$(TOLOCALIZE) --from-code=UTF-8
-	xgettext -o po/$(DOMAIN).pot --join-existing $(UI_MODULES)
 
 ./po/%.mo: ./po/%.po
 	msgfmt -c $< -o $@
@@ -60,13 +58,12 @@ zip-file: _build
 
 _build: all
 	rm -rf ./_build
-	mkdir -p _build/ui _build/schemas _build/locale
+	mkdir -p _build/schemas _build/locale
 	cp $(MODULES) _build
 	for d in $(SUBDIRS); do \
 		mkdir -p _build/$$d; \
 		cp src/$$d/*.js _build/$$d; \
 	done
-	cp $(UI_MODULES) _build/ui
 	cp schemas/*.xml schemas/gschemas.compiled _build/schemas/
 	for l in $(MSGSRC:.po=.mo) ; do \
 		lf=_build/locale/`basename $$l .mo`/LC_MESSAGES; \

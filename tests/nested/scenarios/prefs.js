@@ -6,6 +6,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js'
 
 import {
+  sleep,
+  captureStage,
   useClassicLayout,
   MONITORS,
   assert,
@@ -19,7 +21,7 @@ import {
 export const METRICS = {}
 
 const ROLE = 'omniTest'
-const PREFS_UI_TIMEOUT_S = 30
+const PREFS_UI_TIMEOUT_S = 60
 
 function secondaryPanel() {
   return global.dashToPanel?.panels?.find((p) => p.isStandalone && !p.isPrimary)
@@ -38,7 +40,7 @@ function readCatalog(settings) {
 
 // GTK may only reach the nested compositor: its socket in the private
 // runtime dir, never a display inherited from the host.
-async function checkPreferencesUi() {
+async function checkPreferencesUi(catalog) {
   const runtime = GLib.getenv('XDG_RUNTIME_DIR') ?? ''
   const display = 'cornerstone-nested'
   assert(runtime.includes('/.nested/'), `runtime dir ${runtime} not private`)
@@ -53,6 +55,7 @@ async function checkPreferencesUi() {
   launcher.setenv('WAYLAND_DISPLAY', display, true)
   launcher.setenv('GDK_BACKEND', 'wayland', true)
   launcher.unsetenv('DISPLAY')
+  launcher.setenv('CORNERSTONE_CATALOG', catalog, true)
   const here = GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0])
   const script = GLib.build_filenamev([here, '..', 'prefs-ui.js'])
   const proc = launcher.spawnv(['gjs', '-m', script])
@@ -66,23 +69,39 @@ async function checkPreferencesUi() {
       return GLib.SOURCE_REMOVE
     },
   )
-  let out
-  try {
-    ;[out] = await new Promise((resolve, reject) =>
-      proc.communicate_utf8_async(null, null, (p, res) => {
+  // prefs-ui prints SHOW <page> while a page is on screen.
+  const stdout = new Gio.DataInputStream({
+    base_stream: proc.get_stdout_pipe(),
+  })
+  const readLine = () =>
+    new Promise((resolve, reject) =>
+      stdout.read_line_async(GLib.PRIORITY_DEFAULT, null, (s, res) => {
         try {
-          resolve(p.communicate_utf8_finish(res).slice(1))
+          const [line] = s.read_line_finish_utf8(res)
+          resolve(line)
         } catch (e) {
           reject(e)
         }
       }),
     )
+  const lines = []
+  try {
+    for (let line; (line = await readLine()) !== null; ) {
+      lines.push(line)
+      const shown = /^SHOW (\S+)$/.exec(line)
+      if (shown) await captureStage(`prefs-${shown[1]}`)
+    }
+    await new Promise((resolve) =>
+      proc.wait_async(null, (p, res) => resolve(p.wait_finish(res))),
+    )
   } finally {
     if (!timedOut) GLib.source_remove(timeoutId)
   }
+  const out = lines.join('\n')
   console.log(`[cornerstone-test] prefs-ui: ${out.trim()}`)
   assert(!timedOut, `prefs-ui killed after ${PREFS_UI_TIMEOUT_S} s`)
   assert(proc.get_successful(), `prefs-ui failed: ${out.trim()}`)
+  assert(out.includes('prefs-ui OK'), `prefs-ui did not finish: ${out.trim()}`)
 }
 
 export async function run() {
@@ -158,7 +177,42 @@ export async function run() {
     () => !readCatalog(settings).roles?.some((r) => r.role === ROLE),
   )
 
-  await checkPreferencesUi()
+  // Two tray icons for the Tray page to list.
+  const samples = ['cornerstoneSampleA', 'cornerstoneSampleB'].map((role, i) => {
+    const sample = new PanelMenu.Button(0.5, role)
+    sample.add_child(
+      new St.Icon({
+        icon_name: ['weather-clear-symbolic', 'emblem-music-symbolic'][i],
+        style_class: 'system-status-icon',
+      }),
+    )
+    Main.panel.addToStatusArea(role, sample, 0, 'right')
+    return sample
+  })
+  await waitFor(
+    () => readCatalog(settings).tray?.length >= 2,
+  )
+  await checkPreferencesUi(settings.get_string('mirror-indicator-catalog'))
+
+  // The real entry point, through GNOME's Extensions app.
+  ext().stateObj.openPreferences()
+  const prefsWindow = await waitFor(
+    () =>
+      global
+        .get_window_actors()
+        .map((a) => a.meta_window)
+        .find((w) => w.get_wm_class() === 'org.gnome.Shell.Extensions'),
+    15000,
+  )
+  await sleep(1500)
+  await captureStage('prefs-window')
+  assert(
+    prefsWindow.get_title()?.includes('Cornerstone'),
+    `preferences window title: ${prefsWindow.get_title()}`,
+  )
+  prefsWindow.delete(global.get_current_time())
+  await sleep(500)
+  for (const sample of samples) sample.destroy()
 
   await disable()
   assert(

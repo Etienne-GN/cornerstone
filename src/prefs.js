@@ -15,30 +15,34 @@
  * along with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
-import Gtk from 'gi://Gtk'
+import {
+  ExtensionPreferences,
+  gettext as _,
+} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js'
 
-import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js'
-
-import { MirrorPreferences } from './mirror/prefs.js'
-import { ActionCenterPreferences } from './actionCenter/prefs.js'
+import { setGettext } from './prefs/i18n.js'
+import { ButtonPage } from './prefs/buttonPage.js'
+import { ActionCenterPage } from './prefs/actionCenterPage.js'
+import { TrayPage } from './prefs/trayPage.js'
+import { AboutPage } from './prefs/aboutPage.js'
 
 export default class CornerstonePreferences extends ExtensionPreferences {
   fillPreferencesWindow(window) {
+    setGettext(_)
     const settings = this.getSettings()
     window._settings = settings
+    window.set_default_size(720, 860)
+    window.search_enabled = true
 
-    const builder = new Gtk.Builder()
-    builder.set_translation_domain(this.metadata['gettext-domain'])
-    builder.add_from_file(`${this.path}/ui/SettingsCornerstone.ui`)
-    const page = builder.get_object('cornerstone')
-    window.add(page)
-
-    const parts = [
-      new ActionCenterPreferences(builder, settings),
-      new MirrorPreferences(page, settings, builder.get_object('mirrorGroup')),
+    const pages = [
+      new ButtonPage(settings),
+      new ActionCenterPage(settings),
+      new TrayPage(settings),
+      new AboutPage(this.metadata),
     ]
+    for (const { page } of pages) window.add(page)
     window.connect('close-request', () => {
-      for (const part of parts) part.destroy()
+      for (const page of pages) page.destroy()
       return false
     })
   }

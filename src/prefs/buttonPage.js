@@ -1,0 +1,380 @@
+/*
+ * The Button page: what the one button shows and how its clock looks.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <https://www.gnu.org/licenses/>.
+ */
+
+import Adw from 'gi://Adw'
+import Gio from 'gi://Gio'
+import GLib from 'gi://GLib'
+import GObject from 'gi://GObject'
+import Gtk from 'gi://Gtk'
+import Pango from 'gi://Pango'
+
+import { ELEMENTS, elementOrder, orderIndicators } from '../button/order.js'
+import { CATALOG_KEY, readCatalog } from './catalog.js'
+import { _ } from './i18n.js'
+import { indicatorLabel } from './labels.js'
+import { ButtonPreview } from './preview.js'
+import {
+  RowSet,
+  dropOrder,
+  makeReorderable,
+  stepOrder,
+} from './reorder.js'
+
+// Formats offered as examples of now; '' follows GNOME's clock settings.
+export const CLOCK_PRESETS = [
+  '',
+  '%H:%M',
+  '%-l:%M %p',
+  '%a %H:%M',
+  '%a %-d %b %H:%M',
+  '%H:%M\n%x',
+]
+
+const FORMAT_CODES = [
+  ['%H', () => _('Hour, 00–23')],
+  ['%-l', () => _('Hour, 1–12')],
+  ['%M', () => _('Minutes')],
+  ['%S', () => _('Seconds')],
+  ['%p', () => _('AM or PM')],
+  ['%a', () => _('Weekday, short')],
+  ['%A', () => _('Weekday')],
+  ['%-d', () => _('Day of the month')],
+  ['%b', () => _('Month, short')],
+  ['%B', () => _('Month')],
+  ['%m', () => _('Month number')],
+  ['%Y', () => _('Year')],
+  ['%V', () => _('Week number')],
+  ['%x', () => _('Date, as your language writes it')],
+  ['\\n', () => _('Second line')],
+]
+
+const ELEMENT_LABELS = {
+  indicators: () => _('System indicators'),
+  clock: () => _('Clock'),
+}
+
+function resetButton(settings, keys) {
+  const button = new Gtk.Button({
+    label: _('Reset'),
+    valign: Gtk.Align.CENTER,
+    css_classes: ['flat'],
+    tooltip_text: _("Back to GNOME's look"),
+  })
+  button.connect('clicked', () => {
+    for (const key of keys) settings.reset(key)
+  })
+  return button
+}
+
+function iconImage(icon) {
+  const image = new Gtk.Image({ pixel_size: 16 })
+  try {
+    if (icon) image.gicon = Gio.icon_new_for_string(icon)
+    else image.icon_name = 'image-missing-symbolic'
+  } catch {
+    image.icon_name = 'image-missing-symbolic'
+  }
+  return image
+}
+
+// Shows "\n" as typed in the format entry, and back.
+export const escapeFormat = (format) => format.replaceAll('\n', '\\n')
+export const unescapeFormat = (text) => text.replaceAll('\\n', '\n')
+
+export class ButtonPage {
+  constructor(settings) {
+    this._settings = settings
+    this._ids = []
+    this._syncing = false
+
+    this.page = new Adw.PreferencesPage({
+      title: _('Button'),
+      icon_name: 'preferences-system-time-symbolic',
+    })
+
+    this._buildTop()
+    this._buildElements()
+    this._buildIndicators()
+    this._buildClock()
+  }
+
+  _connect(key, callback) {
+    this._ids.push(this._settings.connect(`changed::${key}`, callback))
+  }
+
+  destroy() {
+    for (const id of this._ids) this._settings.disconnect(id)
+    this._ids = []
+    this._preview.destroy()
+  }
+
+  _buildTop() {
+    const previewGroup = new Adw.PreferencesGroup()
+    this._preview = new ButtonPreview(this._settings)
+    previewGroup.add(this._preview)
+    this.page.add(previewGroup)
+
+    const group = new Adw.PreferencesGroup({
+      description: _(
+        'One button replaces the clock and the system menu on every bar, and opens the Action Center.',
+      ),
+    })
+
+    const enabled = new Adw.SwitchRow({
+      title: _('One button'),
+      subtitle: _("Off brings back GNOME's clock and system menu."),
+    })
+    this._settings.bind(
+      'one-button',
+      enabled,
+      'active',
+      Gio.SettingsBindFlags.DEFAULT,
+    )
+    group.add(enabled)
+    this.page.add(group)
+  }
+
+  _buildElements() {
+    const group = new Adw.PreferencesGroup({
+      title: _('Elements'),
+      description: _('What the button shows, in order.'),
+      header_suffix: resetButton(this._settings, ['button-elements']),
+    })
+    this.page.add(group)
+    this._elementRows = new RowSet(group)
+    this._connect('button-elements', () => this._syncElements())
+    this._syncElements()
+  }
+
+  _syncElements() {
+    this._elementRows.clear()
+    const shown = elementOrder(this._settings.get_strv('button-elements'))
+    const all = [...shown, ...ELEMENTS.filter((e) => !shown.includes(e))]
+    const write = (order, visible) =>
+      this._settings.set_strv(
+        'button-elements',
+        order.filter((name) => visible.includes(name)),
+      )
+
+    all.forEach((name, index) => {
+      const row = new Adw.SwitchRow({
+        title: ELEMENT_LABELS[name](),
+        active: shown.includes(name),
+      })
+      // The button always shows something.
+      row.sensitive = !(shown.length === 1 && shown[0] === name)
+      row.connect('notify::active', () => {
+        const visible = row.active
+          ? [...shown, name]
+          : shown.filter((n) => n !== name)
+        write(all, visible)
+      })
+      makeReorderable(row, name, {
+        first: index === 0,
+        last: index === all.length - 1,
+        move: (key, delta) => write(stepOrder(all, key, delta), shown),
+        dropOn: (dragged, target) =>
+          write(dropOrder(all, dragged, target), shown),
+      })
+      this._elementRows.add(row)
+    })
+  }
+
+  _buildIndicators() {
+    const group = new Adw.PreferencesGroup({
+      title: _('System indicators'),
+      description: _('Shown in the button when GNOME shows them.'),
+      header_suffix: resetButton(this._settings, [
+        'button-indicator-order',
+        'button-hidden-indicators',
+      ]),
+    })
+    this.page.add(group)
+    this._indicatorRows = new RowSet(group)
+    this._indicatorGroup = group
+    for (const key of [
+      CATALOG_KEY,
+      'button-indicator-order',
+      'button-hidden-indicators',
+    ])
+      this._connect(key, () => this._syncIndicators())
+    this._syncIndicators()
+  }
+
+  _syncIndicators() {
+    this._indicatorRows.clear()
+    const { indicators } = readCatalog(this._settings)
+    if (!indicators.length) {
+      this._indicatorRows.add(
+        new Adw.ActionRow({
+          title: _('Enable Cornerstone to list the indicators.'),
+          css_classes: ['dim-label'],
+        }),
+      )
+      return
+    }
+
+    const hidden = this._settings.get_strv('button-hidden-indicators')
+    const ordered = orderIndicators(
+      indicators,
+      this._settings.get_strv('button-indicator-order'),
+    )
+    const names = ordered.map((i) => i.name)
+    const writeOrder = (order) =>
+      this._settings.set_strv('button-indicator-order', order)
+
+    ordered.forEach(({ name, icon, visible }, index) => {
+      const row = new Adw.SwitchRow({
+        title: indicatorLabel(name),
+        subtitle: visible === false ? _('Not shown by GNOME right now') : '',
+        active: !hidden.includes(name),
+      })
+      row.add_prefix(iconImage(icon))
+      row.connect('notify::active', () => {
+        const next = row.active
+          ? hidden.filter((n) => n !== name)
+          : [...hidden, name]
+        this._settings.set_strv('button-hidden-indicators', next)
+      })
+      makeReorderable(row, name, {
+        first: index === 0,
+        last: index === names.length - 1,
+        move: (key, delta) => writeOrder(stepOrder(names, key, delta)),
+        dropOn: (dragged, target) =>
+          writeOrder(dropOrder(names, dragged, target)),
+      })
+      this._indicatorRows.add(row)
+    })
+  }
+
+  _buildClock() {
+    const group = new Adw.PreferencesGroup({
+      title: _('Clock'),
+      header_suffix: resetButton(this._settings, ['clock-format', 'clock-font']),
+    })
+    this.page.add(group)
+
+    const now = GLib.DateTime.new_now_local()
+    const labels = CLOCK_PRESETS.map((format) =>
+      format
+        ? (now.format(format) ?? format).replaceAll('\n', ' / ')
+        : _('As GNOME shows it'),
+    )
+    labels.push(_('Custom'))
+    this._formatRow = new Adw.ComboRow({
+      title: _('Format'),
+      model: Gtk.StringList.new(labels),
+    })
+    group.add(this._formatRow)
+
+    this._customRow = new Adw.EntryRow({
+      title: _('Custom format'),
+      show_apply_button: true,
+    })
+    this._customRow.connect('apply', () =>
+      this._settings.set_string(
+        'clock-format',
+        unescapeFormat(this._customRow.text),
+      ),
+    )
+    group.add(this._customRow)
+
+    const codes = new Adw.ExpanderRow({
+      title: _('Format codes'),
+      subtitle: _('Click a code to add it to the custom format.'),
+    })
+    for (const [code, label] of FORMAT_CODES) {
+      const row = new Adw.ActionRow({
+        title: label(),
+        activatable: true,
+      })
+      row.add_prefix(
+        new Gtk.Label({
+          label: code,
+          width_chars: 4,
+          xalign: 0,
+          css_classes: ['monospace'],
+        }),
+      )
+      row.connect('activated', () => {
+        this._customRow.text += code
+        this._customRow.grab_focus()
+      })
+      codes.add_row(row)
+    }
+    group.add(codes)
+    this._codesRow = codes
+
+    this._formatRow.connect('notify::selected', () => {
+      if (this._syncing) return
+      const index = this._formatRow.selected
+      if (index < CLOCK_PRESETS.length)
+        this._settings.set_string('clock-format', CLOCK_PRESETS[index])
+      else this._syncFormatRows(true)
+    })
+    this._connect('clock-format', () => this._syncFormat())
+    this._syncFormat()
+
+    const fontButton = new Gtk.FontDialogButton({
+      dialog: new Gtk.FontDialog(),
+      use_font: true,
+      valign: Gtk.Align.CENTER,
+    })
+    this._fontRow = new Adw.ActionRow({ title: _('Font') })
+    this._fontRow.add_suffix(fontButton)
+    group.add(this._fontRow)
+    this._fontButton = fontButton
+    fontButton.connect('notify::font-desc', () => {
+      if (this._syncing) return
+      const desc = fontButton.font_desc
+      this._settings.set_string('clock-font', desc ? desc.to_string() : '')
+    })
+    this._connect('clock-font', () => this._syncFont())
+    this._syncFont()
+  }
+
+  _syncFormat() {
+    const format = this._settings.get_string('clock-format')
+    const preset = CLOCK_PRESETS.indexOf(format)
+    this._syncing = true
+    try {
+      this._formatRow.selected = preset < 0 ? CLOCK_PRESETS.length : preset
+      if (preset < 0) this._customRow.text = escapeFormat(format)
+    } finally {
+      this._syncing = false
+    }
+    this._syncFormatRows(preset < 0)
+  }
+
+  _syncFormatRows(custom) {
+    this._customRow.visible = custom
+    this._codesRow.visible = custom
+  }
+
+  _syncFont() {
+    const font = this._settings.get_string('clock-font')
+    this._syncing = true
+    try {
+      this._fontButton.font_desc = Pango.FontDescription.from_string(
+        font || 'Sans Bold 11',
+      )
+      this._fontRow.subtitle = font ? '' : _('Theme font')
+    } finally {
+      this._syncing = false
+    }
+  }
+}

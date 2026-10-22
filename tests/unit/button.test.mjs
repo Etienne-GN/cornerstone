@@ -8,20 +8,13 @@ const src = (p) => fileURLToPath(new URL(`../../src/button/${p}`, import.meta.ur
 const GObject = { registerClass: (_meta, klass) => klass ?? _meta }
 const Base = class {}
 
-const { orderIndicators, indicatorNames } = loadGjs(src('indicators.js'), {
+const { indicatorNames } = loadGjs(src('indicators.js'), {
   GObject,
   St: { BoxLayout: Base },
   Clutter: {},
   Main: {},
 })
-const { elementOrder } = loadGjs(src('button.js'), {
-  GObject,
-  St: {},
-  Clutter: {},
-  PanelMenu: { Button: Base },
-  ClockLabel: Base,
-  IndicatorStrip: Base,
-})
+const { orderIndicators, elementOrder } = loadGjs(src('order.js'))
 const { formatClock } = loadGjs(src('clock.js'), {
   GObject,
   St: { Label: Base },

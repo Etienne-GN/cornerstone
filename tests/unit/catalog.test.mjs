@@ -27,6 +27,9 @@ function load({ primaryIndex = 0, statusArea = {} } = {}) {
       global: {
         display: { get_monitor_plug_name: (i) => `HDMI-${i}` },
       },
+      St: { Icon: class {} },
+      WeakMap,
+      indicatorNames: () => [],
       CATALOG_KEY: policy.CATALOG_KEY,
       EXCLUDED_ROLES: policy.EXCLUDED_ROLES,
       monitorKey: policy.monitorKey,
@@ -90,8 +93,8 @@ test('roles are sorted by label and excluded roles are absent', () => {
   const settings = new Settings()
   ns.publishCatalog(settings, panelManager)
   assert.deepEqual(published(settings).roles, [
-    { role: 'zeta', label: 'Alpha (zeta)' },
-    { role: 'beta', label: 'beta' },
+    { role: 'zeta', label: 'Alpha (zeta)', icon: '' },
+    { role: 'beta', label: 'beta', icon: '' },
   ])
 })
 

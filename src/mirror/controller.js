@@ -226,12 +226,6 @@ export class MirrorController {
   _refreshNow() {
     if (!this._shellPanelAlive) return
 
-    try {
-      publishCatalog(this._settings, this._panelManager)
-    } catch (e) {
-      console.error('[cornerstone] mirror catalog', e)
-    }
-
     const enabled = this._settings.get_boolean(ENABLED_KEY)
 
     try {
@@ -240,6 +234,14 @@ export class MirrorController {
       )
     } catch (e) {
       console.error('[cornerstone] tray sources', e)
+    }
+
+    try {
+      publishCatalog(this._settings, this._panelManager, [
+        ...this._sources.values(),
+      ])
+    } catch (e) {
+      console.error('[cornerstone] mirror catalog', e)
     }
 
     const primary = this._primaryBar

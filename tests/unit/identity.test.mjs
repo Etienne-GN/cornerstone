@@ -57,7 +57,6 @@ function grepLiterals(root, pattern) {
       'Makefile',
       'metadata.json',
       'schemas',
-      'ui',
     )
   } catch (e) {
     if (e.status === 1) return ''
