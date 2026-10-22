@@ -224,3 +224,24 @@ hide the `quickSettings` container on every panel, then change
 dash-to-panel settings that rebuild its panels, and disable and re-enable
 it. The approach holds if the actor stays in place, comes back after a
 rebuild, and disable restores both containers.
+
+Result (2026-10-21, GNOME 51.1, dash-to-panel v74, two monitors): the
+approach holds. `tests/nested/scenarios/spike-slot.js` passes; captures
+in `.nested/spike-slot/`. Findings for the real implementation:
+
+- dash-to-panel reuses date menu and quick settings buttons across
+  rebuilds (`PERSISTENTSTORAGE` in its `panel.js`), so the same
+  containers come back on new panels. Track state per container, not
+  per panel; two containers served every rebuild in the spike.
+- The `dateMenu` container is a `St.Bin`: `set_child()` with our button
+  and back with the original restores cleanly.
+- dash-to-panel shows the quick settings container again when it
+  rebuilds; hiding it once is not enough, keep it hidden on
+  `notify::visible`.
+- With dash-to-panel disabled, the primary containers return to
+  `Main.panel` with our changes intact, so the stock top bar works with
+  no extra code.
+- `global.dashToPanel` is a new object after dash-to-panel is disabled
+  and enabled again; follow `extension-state-changed` and reconnect
+  `panels-created`.
+
