@@ -908,7 +908,7 @@ export const Panel = GObject.registerClass(
       // Set by the mirror controller on secondary panels while mirroring.
       setMap(
         Pos.SYSTEM_MENU,
-        this._omniSystemMenu ??
+        this._cornerstoneSystemMenu ??
           this.statusArea[Utils.getSystemMenuInfo().name].container,
       )
       setMap(Pos.RIGHT_BOX, this._rightBox)

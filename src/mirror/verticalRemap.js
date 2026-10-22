@@ -72,7 +72,7 @@ function leafClone(leaf, owner, compactIcons) {
     x_align: Clutter.ActorAlign.CENTER,
     y_align: Clutter.ActorAlign.CENTER,
   })
-  clone._omniRemapClone = true
+  clone._cornerstoneRemapClone = true
   // Clones paint at the source's allocation, not its preferred size.
   const syncSize = () => {
     const box = leaf.get_allocation_box()
@@ -113,13 +113,13 @@ function remapTarget(clone) {
 }
 
 export function remapClone(clone, vertical) {
-  if (clone._omniRemapClone) return
+  if (clone._cornerstoneRemapClone) return
 
   if (!vertical) {
-    clone._omniRemapStack?.destroy()
+    clone._cornerstoneRemapStack?.destroy()
     return
   }
-  if (clone._omniRemapStack || !clone.source) return
+  if (clone._cornerstoneRemapStack || !clone.source) return
 
   const target = remapTarget(clone)
   const parent = target.get_parent()
@@ -140,7 +140,7 @@ export function remapClone(clone, vertical) {
     y_align: Clutter.ActorAlign.CENTER,
     x_expand: false,
   })
-  stack._omniRemapClone = true
+  stack._cornerstoneRemapClone = true
   let inner = null
   let idleId = 0
 
@@ -153,7 +153,7 @@ export function remapClone(clone, vertical) {
       y_align: Clutter.ActorAlign.CENTER,
       x_expand: false,
     })
-    inner._omniRemapClone = true
+    inner._cornerstoneRemapClone = true
 
     // Before the source's first allocation, rows can't be told apart
     // from single items; look again once it has a size.
@@ -211,15 +211,15 @@ export function remapClone(clone, vertical) {
       idleId = 0
     }
     inner = null
-    if (clone._omniRemapStack === stack) {
-      clone._omniRemapStack = null
+    if (clone._cornerstoneRemapStack === stack) {
+      clone._cornerstoneRemapStack = null
       target.visible = true
     }
   })
   clone.connectObject('destroy', () => stack.destroy(), stack)
   clone.source.connectObject('destroy', () => stack.destroy(), stack)
 
-  clone._omniRemapStack = stack
+  clone._cornerstoneRemapStack = stack
   // Insert before the target: PanelMenu.ButtonBox only lays out its first child.
   parent.insert_child_below(stack, target)
   rebuild()

@@ -1,10 +1,12 @@
-# Omnibar
+# Cornerstone
 
-Omnibar is a fork of [Dash to Panel](https://github.com/home-sweet-gnome/dash-to-panel)
+Cornerstone is a fork of [Dash to Panel](https://github.com/home-sweet-gnome/dash-to-panel)
 for GNOME Shell 50 and 51, with indicator mirroring derived from
 [Multi Monitor Bar](https://github.com/FrederykAbryan/multi-monitors-bar_fapv2).
-It replaces both extensions; do not run it alongside either of them. The name
-is temporary: see [`docs/RENAMING.md`](docs/RENAMING.md).
+It replaces both extensions; do not run it alongside either of them.
+Cornerstone was developed under the working name Omnibar, and is becoming a
+companion to stock Dash to Panel: see
+[`docs/superpowers/specs/2026-10-21-cornerstone-design.md`](docs/superpowers/specs/2026-10-21-cornerstone-design.md).
 
 ## Features
 

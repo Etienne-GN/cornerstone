@@ -31,7 +31,7 @@ function postNotifications(n) {
   const sources = []
   for (let i = 0; i < n; i++) {
     const source = new MessageTray.Source({
-      title: `Omnibar layout test ${i + 1}`,
+      title: `Cornerstone layout test ${i + 1}`,
       iconName: 'dialog-information-symbolic',
     })
     Main.messageTray.add(source)
@@ -73,7 +73,7 @@ function measure() {
     calendar: height(m.calendarHost),
     calendarNatural: natural(m.calendarHost),
   }
-  console.log(`[omnibar-test] layout ${JSON.stringify(metrics)}`)
+  console.log(`[cornerstone-test] layout ${JSON.stringify(metrics)}`)
   return metrics
 }
 

@@ -33,11 +33,11 @@ function mirrorsIn(box, role = ROLE) {
   return box
     .get_children()
     .map((c) => c.get_first_child?.())
-    .filter((a) => a?._omniMirror && a._role === role)
+    .filter((a) => a?._cornerstoneMirror && a._role === role)
 }
 
 function stageMirrors(actor = global.stage, found = []) {
-  if (actor._omniMirror) found.push(actor)
+  if (actor._cornerstoneMirror) found.push(actor)
   for (const child of actor.get_children()) stageMirrors(child, found)
   return found
 }
@@ -76,7 +76,7 @@ async function noMirror(what) {
 
 function systemMenuIsMirror(panel) {
   const actor = panel.allocationMap.systemMenu.actor
-  return actor.get_first_child?.()?._omniMirror === true
+  return actor.get_first_child?.()?._cornerstoneMirror === true
 }
 
 function allocated(actor) {
@@ -194,7 +194,7 @@ export async function run() {
   assert(!disposed.length, `already disposed warnings: ${disposed.join(' | ')}`)
 
   await disable()
-  assert(stageMirrors().length === 0, 'no _omniMirror actor after disable')
+  assert(stageMirrors().length === 0, 'no _cornerstoneMirror actor after disable')
   assert(
     Main.panel.statusArea.quickSettings.container.get_parent() !== null,
     'primary quick settings restored',

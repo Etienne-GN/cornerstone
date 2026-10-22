@@ -33,7 +33,7 @@ export class WidgetMover {
       try {
         this._restore(record)
       } catch (e) {
-        console.error('[omnibar] action center: restoring a widget failed', e)
+        console.error('[cornerstone] action center: restoring a widget failed', e)
       }
     }
   }

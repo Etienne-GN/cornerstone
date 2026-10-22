@@ -57,19 +57,19 @@ class ActionCenterMenu extends PopupMenu.PopupMenu {
     this._boxPointer.add_effect_with_name('dim', this._dimEffect)
 
     this.box.add_style_class_name('quick-settings')
-    this.box.add_style_class_name('omni-action-center-popover')
+    this.box.add_style_class_name('cornerstone-action-center-popover')
 
     this.content = new St.BoxLayout({
-      style_class: 'omni-action-center',
+      style_class: 'cornerstone-action-center',
       x_expand: true,
       y_expand: true,
       ...verticalBoxProps(),
     })
     this.box.add_child(this.content)
 
-    this.qsHost = this._addHost('omni-action-center-quick-settings', false)
-    this.messagesHost = this._addHost('omni-action-center-messages', true)
-    this.calendarHost = this._addHost('omni-action-center-calendar', false)
+    this.qsHost = this._addHost('cornerstone-action-center-quick-settings', false)
+    this.messagesHost = this._addHost('cornerstone-action-center-messages', true)
+    this.calendarHost = this._addHost('cornerstone-action-center-calendar', false)
   }
 
   _addHost(styleClass, yExpand) {
@@ -165,7 +165,7 @@ export class ActionCenter {
     try {
       this._enable()
     } catch (e) {
-      console.error('[omnibar] action center: enable failed', e)
+      console.error('[cornerstone] action center: enable failed', e)
       this.disable()
     }
   }
@@ -175,7 +175,7 @@ export class ActionCenter {
     const qsMenu = Main.panel.statusArea.quickSettings?.menu
     if (!dateMenu?._messageList || !qsMenu?._grid || !qsMenu._overlay) {
       console.error(
-        '[omnibar] action center: GNOME widgets not found',
+        '[cornerstone] action center: GNOME widgets not found',
         new Error('missing dateMenu or quickSettings internals'),
       )
       return
@@ -259,7 +259,7 @@ export class ActionCenter {
       ]) {
         if (!menu.actor.contains(actor)) continue
         console.error(
-          '[omnibar] action center: widget still hosted after restore',
+          '[cornerstone] action center: widget still hosted after restore',
           new Error(String(actor)),
         )
         actor.get_parent().remove_child(actor)
@@ -313,7 +313,7 @@ export class ActionCenter {
     try {
       fn()
     } catch (e) {
-      console.error(`[omnibar] action center: ${what} failed`, e)
+      console.error(`[cornerstone] action center: ${what} failed`, e)
     }
   }
 

@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <interface>
-  <!-- interface-name SettingsOmnibar.ui -->
+  <!-- interface-name SettingsCornerstone.ui -->
   <requires lib="gtk" version="4.0"/>
   <requires lib="libadwaita" version="1.6"/>
-  <object class="AdwPreferencesPage" id="omnibar">
+  <object class="AdwPreferencesPage" id="cornerstone">
     <property name="icon-name">video-display-symbolic</property>
     <property name="title" translatable="yes">Multi-monitor &amp; Action Center</property>
     <child>

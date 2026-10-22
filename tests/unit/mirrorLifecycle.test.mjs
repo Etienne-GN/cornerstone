@@ -258,7 +258,7 @@ test('missing source yields an empty, inert mirror', () => {
     { monitorIndex: 1, menuManager: null, vertical: false },
     'absent',
   )
-  assert.equal(mirror._omniMirror, true)
+  assert.equal(mirror._cornerstoneMirror, true)
   assert.equal(mirror.isEmpty, true)
   assert.equal(mirror.visible, false)
   assert.equal(mirror.reactive, false)
@@ -576,11 +576,11 @@ test('mirrored menus open and close animated through compat', () => {
 test('GType names are namespaced to avoid clashing with MMB', () => {
   assert.deepEqual(JSON.parse(JSON.stringify(registered)), [
     [
-      { GTypeName: 'OmnibarWorkspacePreviewLayout' },
+      { GTypeName: 'CornerstoneWorkspacePreviewLayout' },
       'MMWorkspacePreviewLayout',
     ],
     [
-      { GTypeName: 'OmnibarMirroredIndicatorButton' },
+      { GTypeName: 'CornerstoneMirroredIndicatorButton' },
       'MirroredIndicatorButton',
     ],
   ])
@@ -767,7 +767,7 @@ test('a throwing mirror cleanup still destroys it and every other panel', () => 
     assert.equal(entry.mirror._sourceIndicator, null, 'other mirrors cleaned')
   assert.deepEqual(
     logged.map(([context, e]) => [context, e.message]),
-    [['[omnibar] mirror cleanup', 'injected']],
+    [['[cornerstone] mirror cleanup', 'injected']],
   )
   controller.destroy()
   delete fakes.Main.panel.statusArea[role]
@@ -780,7 +780,7 @@ test('a panel that fails to clear does not stop the others', () => {
   makeSource(role, box)
   const controller = new MirrorController(settingsFake)
   const panels = controllerPanels(controller, 2, role)
-  panels[0].panel._omniSystemMenu = {}
+  panels[0].panel._cornerstoneSystemMenu = {}
   panels[0].panel._setAllocationMap = () => {
     throw new Error('panel gone')
   }
@@ -790,7 +790,7 @@ test('a panel that fails to clear does not stop the others', () => {
   assert.equal(panels[1].entry.mirror.destroyed, true, 'second panel cleared')
   assert.deepEqual(
     logged.map(([context, e]) => [context, e.message]),
-    [['[omnibar] mirror detach', 'panel gone']],
+    [['[cornerstone] mirror detach', 'panel gone']],
   )
   controller.destroy()
   delete fakes.Main.panel.statusArea[role]

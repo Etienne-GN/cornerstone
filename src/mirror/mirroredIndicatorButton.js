@@ -69,7 +69,7 @@ function restoreAnchorState(anchorState) {
 }
 
 const MMWorkspacePreviewLayout = GObject.registerClass(
-  { GTypeName: 'OmnibarWorkspacePreviewLayout' },
+  { GTypeName: 'CornerstoneWorkspacePreviewLayout' },
   class MMWorkspacePreviewLayout extends Clutter.LayoutManager {
     vfunc_get_preferred_width() {
       return [0, 0]
@@ -157,7 +157,7 @@ const MMWorkspacePreviewLayout = GObject.registerClass(
 // Lightweight mirrored indicator that visually clones an existing indicator
 // (e.g., Vitals) from the main panel and opens its menu anchored to this button.
 export const MirroredIndicatorButton = GObject.registerClass(
-  { GTypeName: 'OmnibarMirroredIndicatorButton' },
+  { GTypeName: 'CornerstoneMirroredIndicatorButton' },
   class MirroredIndicatorButton extends PanelMenu.Button {
     _init(host, role) {
       // dontCreateMenu=true: on GNOME 50 PanelMenu.Button installs a
@@ -168,7 +168,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       // A parent destroyed from C never calls the JS destroy() override.
       this.connect('destroy', () => this._cleanupOnce())
 
-      this._omniMirror = true
+      this._cornerstoneMirror = true
       this._role = role
       this._host = host
       this._initGenericIndicator(role)
@@ -727,7 +727,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         x_expand: false,
       })
       thumbnail.set_size(vertical ? 54 : 62, vertical ? 42 : 30)
-      thumbnail._omniWorkspaceIndex = index
+      thumbnail._cornerstoneWorkspaceIndex = index
 
       const box = new St.BoxLayout({
         style_class: 'workspace-box',
@@ -1013,7 +1013,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       const tooltipMenu = targetChild.tooltipMenu
       if (!tooltipMenu) return null
 
-      let state = targetChild._omniTooltipHookState
+      let state = targetChild._cornerstoneTooltipHookState
       if (state && state.tooltipMenu !== tooltipMenu) {
         this._restoreAstraTooltipHook(targetChild, state)
         state = null
@@ -1032,10 +1032,10 @@ export const MirroredIndicatorButton = GObject.registerClass(
           proxies: [],
         }
 
-        targetChild._omniTooltipHookState = state
+        targetChild._cornerstoneTooltipHookState = state
 
         tooltipMenu.open = (...args) => {
-          const activeProxy = targetChild._omniActiveTooltipProxy
+          const activeProxy = targetChild._cornerstoneActiveTooltipProxy
           if (activeProxy) tooltipMenu.sourceActor = activeProxy
 
           originalOpen(...args)
@@ -1044,7 +1044,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
         tooltipMenu.close = (...args) => {
           originalClose(...args)
 
-          if (!targetChild._omniActiveTooltipProxy)
+          if (!targetChild._cornerstoneActiveTooltipProxy)
             tooltipMenu.sourceActor = originalSourceActor
         }
       }
@@ -1055,13 +1055,13 @@ export const MirroredIndicatorButton = GObject.registerClass(
     }
 
     _unregisterAstraTooltipProxy(proxy, targetChild) {
-      const state = targetChild._omniTooltipHookState
+      const state = targetChild._cornerstoneTooltipHookState
       if (!state) return
 
       state.proxies = state.proxies.filter((p) => p !== proxy)
 
-      if (targetChild._omniActiveTooltipProxy === proxy)
-        targetChild._omniActiveTooltipProxy = null
+      if (targetChild._cornerstoneActiveTooltipProxy === proxy)
+        targetChild._cornerstoneActiveTooltipProxy = null
 
       if (state.proxies.length === 0)
         this._restoreAstraTooltipHook(targetChild, state)
@@ -1075,8 +1075,8 @@ export const MirroredIndicatorButton = GObject.registerClass(
         tooltipMenu.sourceActor = state.originalSourceActor
       }
 
-      targetChild._omniActiveTooltipProxy = null
-      targetChild._omniTooltipHookState = null
+      targetChild._cornerstoneActiveTooltipProxy = null
+      targetChild._cornerstoneTooltipHookState = null
     }
 
     _setupAstraProxyEvents(proxy, targetChild) {
@@ -1097,7 +1097,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       // directly calling showTooltip()/hideTooltip() when the proxy is
       // hovered, with a flag so our tooltipMenu.open hook knows to redirect.
       proxy.connect('enter-event', () => {
-        targetChild._omniActiveTooltipProxy = proxy
+        targetChild._cornerstoneActiveTooltipProxy = proxy
         if (typeof targetChild.showTooltip === 'function') {
           targetChild.showTooltip()
         }
@@ -1105,8 +1105,8 @@ export const MirroredIndicatorButton = GObject.registerClass(
       })
 
       proxy.connect('leave-event', () => {
-        if (targetChild._omniActiveTooltipProxy === proxy)
-          targetChild._omniActiveTooltipProxy = null
+        if (targetChild._cornerstoneActiveTooltipProxy === proxy)
+          targetChild._cornerstoneActiveTooltipProxy = null
         if (typeof targetChild.hideTooltip === 'function') {
           targetChild.hideTooltip()
         }
@@ -2310,7 +2310,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
             stageY <= buttonY + buttonHeight
           ) {
             const workspace = global.workspace_manager.get_workspace_by_index(
-              previewButton._omniWorkspaceIndex,
+              previewButton._cornerstoneWorkspaceIndex,
             )
             workspace?.activate(event.get_time())
             return true
@@ -2997,7 +2997,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
     // Another mirror of the same source may still hold the menu anchor
     // during its close delay; it is not the original to restore.
     _unmirroredAnchor(actor) {
-      return actor?._omniMirror && actor !== this
+      return actor?._cornerstoneMirror && actor !== this
         ? this._sourceIndicator
         : actor
     }
@@ -3379,7 +3379,7 @@ export const MirroredIndicatorButton = GObject.registerClass(
       try {
         this._cleanup()
       } catch (e) {
-        console.error('[omnibar] mirror cleanup', e)
+        console.error('[cornerstone] mirror cleanup', e)
       }
     }
 

@@ -70,7 +70,7 @@ export class MirrorPreferences {
         roles: Array.isArray(catalog?.roles) ? catalog.roles : [],
       }
     } catch (e) {
-      console.error(`[omnibar] prefs: invalid JSON in ${CATALOG_KEY}`, e)
+      console.error(`[cornerstone] prefs: invalid JSON in ${CATALOG_KEY}`, e)
       return { monitors: [], roles: [] }
     }
   }

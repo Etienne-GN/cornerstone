@@ -389,19 +389,19 @@
 	border-color: #fff;
 }
 
-.omni-action-center {
+.cornerstone-action-center {
 	spacing: 12px;
 }
 
-.omni-action-center-messages .message-list,
-.omni-action-center-messages .message-list:ltr,
-.omni-action-center-messages .message-list:rtl {
+.cornerstone-action-center-messages .message-list,
+.cornerstone-action-center-messages .message-list:ltr,
+.cornerstone-action-center-messages .message-list:rtl {
 	margin: 0;
 	padding: 0;
 	border-width: 0;
 }
 
-.omni-action-center-calendar .datemenu-calendar-column:ltr,
-.omni-action-center-calendar .datemenu-calendar-column:rtl {
+.cornerstone-action-center-calendar .datemenu-calendar-column:ltr,
+.cornerstone-action-center-calendar .datemenu-calendar-column:rtl {
 	margin: 0;
 }

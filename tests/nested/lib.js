@@ -46,7 +46,7 @@ export function captureStage(name) {
       try {
         obj.screenshot_finish(res)
         stream.close(null)
-        console.log(`[omnibar-test] captured ${path}`)
+        console.log(`[cornerstone-test] captured ${path}`)
         resolve(path)
       } catch (e) {
         reject(e)
@@ -137,5 +137,5 @@ export function assertIsolated() {
 // Last call of every scenario: run.sh fails a run without this sentinel.
 export function done(scenario) {
   assertIsolated()
-  console.log(`[omnibar-test] DONE ${scenario}`)
+  console.log(`[cornerstone-test] DONE ${scenario}`)
 }

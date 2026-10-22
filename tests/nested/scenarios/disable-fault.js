@@ -20,8 +20,8 @@ import {
 
 export const METRICS = {}
 
-const ROLE = 'omniFault'
-const INJECTED = 'omnibar-test injected fault'
+const ROLE = 'cornerstoneFault'
+const INJECTED = 'cornerstone-test injected fault'
 
 function stageActors(actor = global.stage, found = []) {
   found.push(actor)
@@ -29,7 +29,7 @@ function stageActors(actor = global.stage, found = []) {
   return found
 }
 
-const stageMirrors = () => stageActors().filter((a) => a._omniMirror)
+const stageMirrors = () => stageActors().filter((a) => a._cornerstoneMirror)
 
 function addFake() {
   const button = new PanelMenu.Button(0.5, ROLE)
@@ -72,12 +72,12 @@ export async function run() {
     throw new Error(INJECTED)
   }
 
-  // run.sh ignores [omnibar] error lines that carry the INJECTED marker.
+  // run.sh ignores [cornerstone] error lines that carry the INJECTED marker.
   await disable()
 
   for (const context of ['mirror cleanup', 'disable action center'])
     assert(
-      logLines(new RegExp(`\\[omnibar\\] ${context}.*${INJECTED}`)).length,
+      logLines(new RegExp(`\\[cornerstone\\] ${context}.*${INJECTED}`)).length,
       `${context} error logged`,
     )
   assert(
@@ -85,11 +85,11 @@ export async function run() {
     'Main.panel is back in panelBox',
   )
   assert(global.dashToPanel === undefined, 'global.dashToPanel removed')
-  assert(stageMirrors().length === 0, 'no _omniMirror actor after disable')
+  assert(stageMirrors().length === 0, 'no _cornerstoneMirror actor after disable')
   const onStage = new Set(stageActors())
   assert(
     bars.every((bar) => !onStage.has(bar)),
-    'no Omnibar bar left on stage',
+    'no Cornerstone bar left on stage',
   )
 
   await enableAndMirror()

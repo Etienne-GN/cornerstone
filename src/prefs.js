@@ -205,11 +205,11 @@ const Preferences = class {
     let pageAction = this._builder.get_object('action')
     window.add(pageAction)
 
-    this._builder.add_from_file(this._path + '/ui/SettingsOmnibar.ui')
-    let pageOmnibar = this._builder.get_object('omnibar')
-    window.add(pageOmnibar)
+    this._builder.add_from_file(this._path + '/ui/SettingsCornerstone.ui')
+    let pageCornerstone = this._builder.get_object('cornerstone')
+    window.add(pageCornerstone)
     const mirrorPreferences = new MirrorPreferences(
-      pageOmnibar,
+      pageCornerstone,
       settings,
       this._builder.get_object('mirrorGroup'),
     )

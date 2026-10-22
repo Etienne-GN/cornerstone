@@ -20,7 +20,7 @@ const CLIPBOARD = 'clipboard-history@alexsaveau.dev'
 const OFF_STAGE = /which is not in the stage/
 
 function clipboardMirrors(actor = global.stage, found = []) {
-  if (actor._omniMirror && actor._isClipboardIndicator()) found.push(actor)
+  if (actor._cornerstoneMirror && actor._isClipboardIndicator()) found.push(actor)
   for (const child of actor.get_children()) clipboardMirrors(child, found)
   return found
 }

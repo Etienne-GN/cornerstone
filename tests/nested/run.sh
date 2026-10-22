@@ -169,7 +169,7 @@ nested_env=(
 )
 
 args=(--devkit --wayland --no-x11 --unsafe-mode
-  --wayland-display omnibar-nested)
+  --wayland-display cornerstone-nested)
 [[ $viewer -eq 1 ]] || args+=(--headless)
 for ((i = 0; i < monitors; i++)); do
   args+=(--virtual-monitor 1920x1080)
@@ -261,8 +261,8 @@ elif [[ $status -ne 0 ]]; then
   fail=1
 fi
 if [[ $viewer -eq 0 ]] &&
-  ! grep -q -E "\[omnibar-test\] DONE $scenario\$" "$log"; then
-  echo "FAIL $scenario: no '[omnibar-test] DONE $scenario' in $log" >&2
+  ! grep -q -E "\[cornerstone-test\] DONE $scenario\$" "$log"; then
+  echo "FAIL $scenario: no '[cornerstone-test] DONE $scenario' in $log" >&2
   fail=1
 fi
 # Headless runs check the whole log, shutdown included; make sure there was
@@ -278,9 +278,9 @@ fi
 # Error level only: the stock shell logs Gjs-CRITICAL GC warnings for its
 # own panel actors at shutdown, which must not fail a run. Errors a scenario
 # raises on purpose carry the injected-fault marker and are left out.
-if grep -n -E '(CRITICAL|ERROR) \*\*.*\[omnibar\]' "$checked" |
-  grep -v 'omnibar-test injected fault' >&2; then
-  echo "FAIL $scenario: [omnibar] error in $log" >&2
+if grep -n -E '(CRITICAL|ERROR) \*\*.*\[cornerstone\]' "$checked" |
+  grep -v 'cornerstone-test injected fault' >&2; then
+  echo "FAIL $scenario: [cornerstone] error in $log" >&2
   fail=1
 fi
 if grep -n 'Will monitor session' "$log" >&2; then

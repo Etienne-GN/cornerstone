@@ -81,10 +81,10 @@ after(() => {
   }
 })
 
-test('metadata declares the Omnibar identity', () => {
+test('metadata declares the Cornerstone identity', () => {
   const metadata = JSON.parse(read(repo, 'metadata.json'))
   assert.deepEqual(metadata['shell-version'], ['50', '51'])
-  assertIdentity(repo, 'omnibar', 'Omnibar')
+  assertIdentity(repo, 'cornerstone', 'Cornerstone')
 })
 
 test('no upstream identity literals remain in code', () => {
@@ -117,7 +117,7 @@ test('rename.sh rewrites the identity on a worktree copy', () => {
   assert.equal(
     grepLiterals(
       wt,
-      'omnibar@etienne|org\\.gnome\\.shell\\.extensions\\.omnibar|extensions/omnibar/',
+      'cornerstone@etienne|org\\.gnome\\.shell\\.extensions\\.cornerstone|extensions/cornerstone/',
     ),
     '',
   )
@@ -125,7 +125,7 @@ test('rename.sh rewrites the identity on a worktree copy', () => {
     JSON.parse(read(wt, 'metadata.json'))['shell-version'].join(),
     '50,51',
   )
-  assert.equal(grepLiterals(wt, "GTypeName: 'Omnibar|\\[omnibar\\]"), '')
+  assert.equal(grepLiterals(wt, "GTypeName: 'Cornerstone|\\[cornerstone\\]"), '')
   const mirror = read(wt, 'src/mirror/mirroredIndicatorButton.js')
   assert.match(mirror, /GTypeName: 'FooBarMirroredIndicatorButton'/)
   assert.match(read(wt, 'src/mirror/policy.js'), /`\[foo\] mirror policy:/)

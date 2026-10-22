@@ -1,9 +1,9 @@
 .~
 *~
 gschemas.compiled
-omnibar@etienne-gn.github.io*.zip
+cornerstone@etienne-gn.github.io*.zip
 *.mo
-po/omnibar.pot
+po/cornerstone.pot
 ui/*.ui.h
 node_modules/
 .nested/

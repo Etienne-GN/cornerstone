@@ -7,7 +7,7 @@ session buses, private XDG/HOME/TMPDIR, keyfile GSettings. Logs go to
     tests/nested/run.sh <scenario> [--monitors N] [--vertical]
       [--viewer] [--with-extension <uuid>]...
 
-Headless runs end with `[omnibar-test] DONE <scenario>` and a 120 s timeout.
+Headless runs end with `[cornerstone-test] DONE <scenario>` and a 120 s timeout.
 
 ## Interactive viewer
 
@@ -32,7 +32,7 @@ is only read.
       --with-extension arcmenu@arcmenu.com \
       --with-extension appindicatorsupport@rgcjonas.gmail.com
 
-Cycles ArcMenu and Omnibar, then ends with both enabled so the shell's own
+Cycles ArcMenu and Cornerstone, then ends with both enabled so the shell's own
 shutdown runs under live mirrors. Headless runs check the whole log,
 shutdown included, and fail when the shell never reached shutdown.
 

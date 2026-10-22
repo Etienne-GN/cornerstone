@@ -144,10 +144,10 @@ test('disable runs every teardown step when each one throws', async () => {
     'app icons reset',
   ])
   assert.deepEqual(logged.map(([context]) => context).sort(), [
-    '[omnibar] disable action center',
-    '[omnibar] disable mirror controller',
-    '[omnibar] disable panel manager',
-    '[omnibar] disable panel settings',
+    '[cornerstone] disable action center',
+    '[cornerstone] disable mirror controller',
+    '[cornerstone] disable panel manager',
+    '[cornerstone] disable panel settings',
   ])
   assert.equal(extension.actionCenter, null)
   assert.equal(extension.mirrorController, null)

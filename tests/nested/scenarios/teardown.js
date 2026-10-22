@@ -23,7 +23,7 @@ const APPINDICATOR = 'appindicatorsupport@rgcjonas.gmail.com'
 const TEARDOWN_NOISE = /already disposed|has no handler with id|JS ERROR/
 
 function stageMirrors(role, actor = global.stage, found = []) {
-  if (actor._omniMirror && actor._role === role) found.push(actor)
+  if (actor._cornerstoneMirror && actor._role === role) found.push(actor)
   for (const child of actor.get_children()) stageMirrors(role, child, found)
   return found
 }

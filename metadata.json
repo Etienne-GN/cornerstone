@@ -1,12 +1,12 @@
 {
-  "extension-id": "omnibar",
-  "uuid": "omnibar@etienne-gn.github.io",
-  "name": "Omnibar",
-  "description": "An icon taskbar for the Gnome Shell, with the panel on every monitor. Omnibar is a fork of Dash to Panel (developed by @jderose9 and @charlesg99) that adds Multi Monitor Bar features, based on the work of Frederyk Abryan and spin83.\n\nThis extension moves the dash into the gnome main panel so that the application launchers and system tray are combined into a single panel, similar to that found in KDE Plasma and Windows 7+.",
+  "extension-id": "cornerstone",
+  "uuid": "cornerstone@etienne-gn.github.io",
+  "name": "Cornerstone",
+  "description": "An icon taskbar for the Gnome Shell, with the panel on every monitor. Cornerstone is a fork of Dash to Panel (developed by @jderose9 and @charlesg99) that adds Multi Monitor Bar features, based on the work of Frederyk Abryan and spin83.\n\nThis extension moves the dash into the gnome main panel so that the application launchers and system tray are combined into a single panel, similar to that found in KDE Plasma and Windows 7+.",
   "shell-version": ["50", "51"],
   "url": "",
-  "settings-schema": "org.gnome.shell.extensions.omnibar",
-  "gettext-domain": "omnibar",
+  "settings-schema": "org.gnome.shell.extensions.cornerstone",
+  "gettext-domain": "cornerstone",
   "version": 9999,
   "donations": {
       "paypal": "charlesg99"

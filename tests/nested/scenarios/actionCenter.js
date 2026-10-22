@@ -22,7 +22,7 @@ import {
 
 export const METRICS = {}
 
-const TEST_TITLE = 'Omnibar action center test'
+const TEST_TITLE = 'Cornerstone action center test'
 
 const qsMenu = () => Main.panel.statusArea.quickSettings.menu
 const dateMenu = () => Main.panel.statusArea.dateMenu

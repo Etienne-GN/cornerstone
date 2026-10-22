@@ -93,7 +93,7 @@ export class MirrorController {
       try {
         this._clearPanel(panel)
       } catch (e) {
-        console.error('[omnibar] mirror detach', e)
+        console.error('[cornerstone] mirror detach', e)
       }
     }
     this._panels = []
@@ -176,7 +176,7 @@ export class MirrorController {
     try {
       publishCatalog(this._settings, this._panelManager)
     } catch (e) {
-      console.error('[omnibar] mirror catalog', e)
+      console.error('[cornerstone] mirror catalog', e)
     }
 
     const enabled = this._settings.get_boolean(ENABLED_KEY)
@@ -186,7 +186,7 @@ export class MirrorController {
         if (enabled) this._syncPanel(panel)
         else this._clearPanel(panel)
       } catch (e) {
-        console.error('[omnibar] mirror refresh', e)
+        console.error('[cornerstone] mirror refresh', e)
       }
     }
   }
@@ -318,7 +318,7 @@ export class MirrorController {
     if (state.host.vertical) panel._setVertical(entry.mirror.container, true)
     entry.mirror.syncOrientation(state.host.vertical)
     panel.statusArea[QUICK_SETTINGS]?.container.hide()
-    panel._omniSystemMenu = entry.mirror.container
+    panel._cornerstoneSystemMenu = entry.mirror.container
     panel._setAllocationMap()
     panel.updateElementPositions()
   }
@@ -331,9 +331,9 @@ export class MirrorController {
   }
 
   _restoreSystemMenu(panel) {
-    if (!panel._omniSystemMenu) return
+    if (!panel._cornerstoneSystemMenu) return
 
-    delete panel._omniSystemMenu
+    delete panel._cornerstoneSystemMenu
     panel._setAllocationMap()
     panel.updateElementPositions()
   }

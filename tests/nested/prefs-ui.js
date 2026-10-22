@@ -1,4 +1,4 @@
-// Loads the Omnibar preferences page and binds the Action Center rows
+// Loads the Cornerstone preferences page and binds the Action Center rows
 // against in-memory settings. Spawned by the prefs scenario so GTK only
 // ever talks to the nested compositor.
 import Gio from 'gi://Gio'
@@ -7,7 +7,7 @@ import System from 'system'
 
 // Checked before GTK or libadwaita is loaded: anything else could reach the
 // live display.
-const DISPLAY_NAME = 'omnibar-nested'
+const DISPLAY_NAME = 'cornerstone-nested'
 const runtime = GLib.getenv('XDG_RUNTIME_DIR') ?? ''
 const refusal =
   GLib.getenv('WAYLAND_DISPLAY') !== DISPLAY_NAME
@@ -47,13 +47,13 @@ function groupsOf(widget, out = []) {
 Adw.init()
 
 const builder = new Gtk.Builder()
-builder.add_from_file(`${extDir}/ui/SettingsOmnibar.ui`)
-const page = builder.get_object('omnibar')
+builder.add_from_file(`${extDir}/ui/SettingsCornerstone.ui`)
+const page = builder.get_object('cornerstone')
 const acGroup = builder.get_object('actionCenterGroup')
 const mirrorGroup = builder.get_object('mirrorGroup')
 const enabledRow = builder.get_object('action_center_switch')
 const bannerRow = builder.get_object('action_center_banner_click_combo')
-assert(page instanceof Adw.PreferencesPage, 'omnibar page')
+assert(page instanceof Adw.PreferencesPage, 'cornerstone page')
 assert(acGroup?.visible, 'Action Center group shown')
 assert(enabledRow instanceof Adw.SwitchRow, 'action-center switch row')
 assert(bannerRow instanceof Adw.ComboRow, 'banner click combo row')
@@ -73,7 +73,7 @@ const source = Gio.SettingsSchemaSource.new_from_directory(
   Gio.SettingsSchemaSource.get_default(),
   false,
 )
-const schema = source.lookup('org.gnome.shell.extensions.omnibar', false)
+const schema = source.lookup('org.gnome.shell.extensions.cornerstone', false)
 const settings = new Gio.Settings({
   settings_schema: schema,
   backend: Gio.memory_settings_backend_new(),

@@ -1,5 +1,5 @@
 /*
- * Action Center rows of the Omnibar preferences page.
+ * Action Center rows of the Cornerstone preferences page.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

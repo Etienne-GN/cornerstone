@@ -321,13 +321,13 @@ export const PanelManager = class {
     try {
       DTP_EXTENSION.mirrorController?.detach()
     } catch (e) {
-      console.error('[omnibar] disable mirror detach', e)
+      console.error('[cornerstone] disable mirror detach', e)
     }
     try {
       // Its source may be a button of a panel about to go away.
       DTP_EXTENSION.actionCenter?.close({ animate: false })
     } catch (e) {
-      console.error('[omnibar] disable action center close', e)
+      console.error('[cornerstone] disable action center close', e)
     }
     this.primaryPanel && this.overview.disable()
     this.proximityManager.destroy()

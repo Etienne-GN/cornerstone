@@ -66,7 +66,7 @@ export function readVisibility(settings) {
     if (!reportedInvalid.has(raw)) {
       reportedInvalid.add(raw)
       console.error(
-        `[omnibar] mirror policy: invalid JSON in ${VISIBILITY_KEY}`,
+        `[cornerstone] mirror policy: invalid JSON in ${VISIBILITY_KEY}`,
         e,
       )
     }

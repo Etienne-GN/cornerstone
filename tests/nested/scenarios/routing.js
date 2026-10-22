@@ -21,7 +21,7 @@ import {
   waitFor,
 } from '../lib.js'
 
-const TEST_TITLE = 'Omnibar routing test'
+const TEST_TITLE = 'Cornerstone routing test'
 const DISPOSED = /already disposed/
 const NAN = /isnan|\bNaN\b/
 const PANEL_OVERRIDES = [
@@ -280,7 +280,7 @@ export async function run() {
   Main.panel.closeCalendar()
   await expectClosed('after secondary clock click')
 
-  const mirror = await waitFor(() => usable(panel._omniSystemMenu?.child))
+  const mirror = await waitFor(() => usable(panel._cornerstoneSystemMenu?.child))
   await clickActor(mirror)
   await expectOpen('quick settings mirror click', secondary)
   assert(ac()._source === mirror, 'source is the quick settings mirror')

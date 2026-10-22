@@ -155,7 +155,7 @@ export class ActionCenterRouter {
       panels.find((p) => p.isPrimary),
     ]) {
       if (!panel) continue
-      const mirror = panel._omniSystemMenu
+      const mirror = panel._cornerstoneSystemMenu
       candidates.push(
         panel.statusArea?.dateMenu,
         mirror?.child ?? mirror,
@@ -231,7 +231,7 @@ export class ActionCenterRouter {
     const bin = Main.messageTray._bannerBin
     if (!bin) {
       console.error(
-        '[omnibar] action center: banner container not found',
+        '[cornerstone] action center: banner container not found',
         new Error('Main.messageTray._bannerBin is missing'),
       )
       return

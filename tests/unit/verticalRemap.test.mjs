@@ -116,15 +116,15 @@ test('single icon wrapper is replaced and restored', () => {
   remapClone(clone, true)
   assert.equal(proxy.visible, true, 'component button stays interactive')
   assert.equal(wrapper.visible, false, 'horizontal dimensions are removed')
-  assert.equal(proxy.children[0], clone._omniRemapStack, 'stack is first')
-  const iconClone = clone._omniRemapStack.children[0].children[0]
+  assert.equal(proxy.children[0], clone._cornerstoneRemapStack, 'stack is first')
+  const iconClone = clone._cornerstoneRemapStack.children[0].children[0]
   assert.equal(iconClone.width, 24)
   icon.set_size(0, 0)
   icon.emit('notify::allocation')
   assert.equal(iconClone.width, 24, 'zero allocation keeps the painted size')
   remapClone(clone, false)
   assert.equal(wrapper.visible, true, 'horizontal content restored')
-  assert.equal(clone._omniRemapStack, null)
+  assert.equal(clone._cornerstoneRemapStack, null)
   assert.equal(pending.size, 0, 'pending rebuild removed during cleanup')
 })
 
@@ -139,7 +139,7 @@ test('source first allocated after remapping is split', () => {
   row.set_size(80, 24)
   row.emit('notify::allocation')
   flush()
-  assert.equal(rowClone._omniRemapStack.children[0].children.length, 2)
+  assert.equal(rowClone._cornerstoneRemapStack.children[0].children.length, 2)
   rowClone.destroy()
   assert.equal(button.children.length, 0, 'replacement removed with clone')
 })
@@ -154,7 +154,7 @@ test('tray visibility changes rebuild the stack', () => {
   const trayClone = new Actor({ source: tray })
   trayButton.add_child(trayClone)
   remapClone(trayClone, true)
-  const leaves = () => trayClone._omniRemapStack.children[0].children
+  const leaves = () => trayClone._cornerstoneRemapStack.children[0].children
   assert.equal(leaves().length, 1)
   vpn.visible = true
   vpn.emit('notify::visible')
@@ -188,7 +188,7 @@ test('Astra icons are capped, graphs and labels keep their size', () => {
   const astraClone = new Actor({ source: metrics })
   component.add_child(astraClone)
   remapClone(astraClone, true)
-  const leaves = astraClone._omniRemapStack.children[0].children
+  const leaves = astraClone._cornerstoneRemapStack.children[0].children
   assert.equal(leaves[0].width, 18, 'icons capped at 18 logical pixels')
   assert.equal(leaves[0].height, 18)
   assert.equal(leaves[1].width, 40, 'graphs retain their source size')
@@ -206,6 +206,6 @@ test('Astra icons are capped, graphs and labels keep their size', () => {
   assert.equal(leaves[0].width, 36, 'fullscreen keeps the compact size')
   remapClone(astraClone, false)
   assert.equal(astraClone.visible, true, 'horizontal content restored')
-  assert.equal(astraClone._omniRemapStack, null)
+  assert.equal(astraClone._cornerstoneRemapStack, null)
   assert.equal(astraIcon.handlers.length, 0, 'icon watchers released')
 })

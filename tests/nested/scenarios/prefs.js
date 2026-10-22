@@ -28,7 +28,7 @@ function mirrored(panel) {
   return panel._rightBox
     .get_children()
     .map((c) => c.get_first_child?.())
-    .some((a) => a?._omniMirror && a._role === ROLE)
+    .some((a) => a?._cornerstoneMirror && a._role === ROLE)
 }
 
 function readCatalog(settings) {
@@ -39,7 +39,7 @@ function readCatalog(settings) {
 // runtime dir, never a display inherited from the host.
 async function checkPreferencesUi() {
   const runtime = GLib.getenv('XDG_RUNTIME_DIR') ?? ''
-  const display = 'omnibar-nested'
+  const display = 'cornerstone-nested'
   assert(runtime.includes('/.nested/'), `runtime dir ${runtime} not private`)
   assert(
     GLib.file_test(`${runtime}/${display}`, GLib.FileTest.EXISTS),
@@ -79,7 +79,7 @@ async function checkPreferencesUi() {
   } finally {
     if (!timedOut) GLib.source_remove(timeoutId)
   }
-  console.log(`[omnibar-test] prefs-ui: ${out.trim()}`)
+  console.log(`[cornerstone-test] prefs-ui: ${out.trim()}`)
   assert(!timedOut, `prefs-ui killed after ${PREFS_UI_TIMEOUT_S} s`)
   assert(proc.get_successful(), `prefs-ui failed: ${out.trim()}`)
 }

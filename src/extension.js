@@ -55,10 +55,10 @@ export let tracker = null
 function isolated(component, teardown) {
   try {
     Promise.resolve(teardown()).catch((e) =>
-      console.error(`[omnibar] disable ${component}`, e),
+      console.error(`[cornerstone] disable ${component}`, e),
     )
   } catch (e) {
-    console.error(`[omnibar] disable ${component}`, e)
+    console.error(`[cornerstone] disable ${component}`, e)
   }
 }
 

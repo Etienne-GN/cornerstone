@@ -5,6 +5,6 @@ import { assertIsolated, enable } from '../lib.js'
 export async function run() {
   await enable()
   assertIsolated()
-  console.log('[omnibar-test] READY')
+  console.log('[cornerstone-test] READY')
   await new Promise(() => {})
 }

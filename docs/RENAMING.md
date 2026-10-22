@@ -6,11 +6,11 @@ code calls `getSettings()` and reads `metadata.name` at runtime.
 
 Current values:
 
-- uuid: `omnibar@etienne-gn.github.io`
-- settings-schema: `org.gnome.shell.extensions.omnibar`
-- schema path: derived, `/org/gnome/shell/extensions/omnibar/`
-- gettext-domain: `omnibar`
-- name: `Omnibar`
+- uuid: `cornerstone@etienne-gn.github.io`
+- settings-schema: `org.gnome.shell.extensions.cornerstone`
+- schema path: derived, `/org/gnome/shell/extensions/cornerstone/`
+- gettext-domain: `cornerstone`
+- name: `Cornerstone`
 
 ## Changing the name
 

@@ -205,5 +205,5 @@ test('a failed restore is logged and the rest still restored', (t) => {
   assert.equal(x.get_parent(), null, 'unrestorable actor left in the host')
   assert.equal(host.get_n_children(), 0)
   assert.equal(errors.length, 1)
-  assert.match(String(errors[0][0]), /\[omnibar\]/)
+  assert.match(String(errors[0][0]), /\[cornerstone\]/)
 })
