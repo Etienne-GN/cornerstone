@@ -22,10 +22,13 @@ import GObject from 'gi://GObject'
 import Gtk from 'gi://Gtk'
 import Pango from 'gi://Pango'
 
+import { ButtonConfig } from '../button/config.js'
 import { ELEMENTS, elementOrder, orderIndicators } from '../button/order.js'
+import { BUTTON_KEYS, OVERRIDES_KEY, parseOverrides } from '../button/overrides.js'
 import { CATALOG_KEY, readCatalog } from './catalog.js'
 import { _ } from './i18n.js'
 import { indicatorLabel } from './labels.js'
+import { monitorNames, monitorTitle } from './monitors.js'
 import { ButtonPreview } from './preview.js'
 import {
   RowSet,
@@ -67,7 +70,7 @@ const ELEMENT_LABELS = {
   clock: () => _('Clock'),
 }
 
-function resetButton(settings, keys) {
+function resetButton(config, keys) {
   const button = new Gtk.Button({
     label: _('Reset'),
     valign: Gtk.Align.CENTER,
@@ -75,7 +78,7 @@ function resetButton(settings, keys) {
     tooltip_text: _("Back to GNOME's look"),
   })
   button.connect('clicked', () => {
-    for (const key of keys) settings.reset(key)
+    for (const key of keys) config.reset(key)
   })
   return button
 }
@@ -98,7 +101,15 @@ export const unescapeFormat = (text) => text.replaceAll('\\n', '\n')
 export class ButtonPage {
   constructor(settings) {
     this._settings = settings
+    // What the groups below show and change: every monitor's settings, or
+    // one monitor's.
+    this._config = new ButtonConfig(settings)
     this._ids = []
+    this._configIds = []
+    this._names = {}
+    this._monitorChoices = [null]
+    this._monitorLabels = ''
+    this._destroyed = false
     this._syncing = false
 
     this.page = new Adw.PreferencesPage({
@@ -107,24 +118,128 @@ export class ButtonPage {
     })
 
     this._buildTop()
+    this._buildMonitors()
     this._buildElements()
     this._buildIndicators()
     this._buildClock()
+    this._syncMonitors()
   }
 
+  // Button settings come through the config, which follows the monitor
+  // chosen; the others straight from the settings.
   _connect(key, callback) {
-    this._ids.push(this._settings.connect(`changed::${key}`, callback))
+    if (key in BUTTON_KEYS)
+      this._configIds.push(this._config.connect(`changed::${key}`, callback))
+    else this._ids.push(this._settings.connect(`changed::${key}`, callback))
   }
 
   destroy() {
+    this._destroyed = true
     for (const id of this._ids) this._settings.disconnect(id)
     this._ids = []
+    for (const id of this._configIds) this._config.disconnect(id)
+    this._configIds = []
     this._preview.destroy()
+    this._config.destroy()
+  }
+
+  // The monitor the page edits: a monitor key, or null for every monitor.
+  get monitor() {
+    return this._config.monitor
+  }
+
+  selectMonitor(monitor) {
+    this._config.setMonitor(monitor)
+    this._syncMonitors()
+  }
+
+  _buildMonitors() {
+    const group = new Adw.PreferencesGroup({
+      title: _('Monitors'),
+      description: _(
+        'Give a monitor its own button: choose it, then turn on its own settings.',
+      ),
+    })
+    this.monitorRow = new Adw.ComboRow({ title: _('Settings for') })
+    this.monitorRow.connect('notify::selected', () => {
+      if (this._syncing) return
+      this.selectMonitor(this._monitorChoices[this.monitorRow.selected] ?? null)
+    })
+    group.add(this.monitorRow)
+
+    this.ownRow = new Adw.SwitchRow({
+      title: _('Own settings for this monitor'),
+      subtitle: _('Off, it looks like every other monitor.'),
+    })
+    this.ownRow.connect('notify::active', () => {
+      if (this._syncing) return
+      this._config.setOverride(this.ownRow.active)
+    })
+    group.add(this.ownRow)
+    this.page.add(group)
+    this._monitorGroup = group
+
+    for (const key of [CATALOG_KEY, OVERRIDES_KEY])
+      this._ids.push(
+        this._settings.connect(`changed::${key}`, () => this._syncMonitors()),
+      )
+    monitorNames().then((names) => {
+      if (this._destroyed) return
+      this._names = names
+      this._syncMonitors()
+    })
+  }
+
+  _syncMonitors() {
+    const { monitors } = readCatalog(this._settings)
+    const overrides = parseOverrides(this._settings.get_string(OVERRIDES_KEY))
+    let monitor = this._config.monitor
+    // A monitor unplugged while chosen: back to every monitor.
+    if (monitor !== null && !monitors.some((m) => m.key === monitor)) {
+      monitor = null
+      this._config.setMonitor(null)
+    }
+
+    let extended = 0
+    const titles = monitors.map((m) => {
+      const title = monitorTitle(m, this._names, m.primary ? 0 : extended++)
+      return overrides[m.key] ? `${title} · ${_('own settings')}` : title
+    })
+    this._monitorChoices = [null, ...monitors.map((m) => m.key)]
+
+    const own = this._config.hasOverride
+    this._syncing = true
+    try {
+      // Replacing the model from its own notify::selected never returns.
+      const labels = [_('Every monitor'), ...titles]
+      if (labels.join('\n') !== this._monitorLabels) {
+        this._monitorLabels = labels.join('\n')
+        this.monitorRow.model = Gtk.StringList.new(labels)
+      }
+      this.monitorRow.selected = Math.max(
+        0,
+        this._monitorChoices.indexOf(monitor),
+      )
+      this.ownRow.active = own
+    } finally {
+      this._syncing = false
+    }
+    this._monitorGroup.visible = monitors.length > 1
+    this.ownRow.visible = monitor !== null
+
+    // A monitor without its own settings shows every monitor's, read-only.
+    const editable = monitor === null || own
+    for (const group of [
+      this._elementGroup,
+      this._indicatorGroup,
+      this._clockGroup,
+    ])
+      group.sensitive = editable
   }
 
   _buildTop() {
     const previewGroup = new Adw.PreferencesGroup()
-    this._preview = new ButtonPreview(this._settings)
+    this._preview = new ButtonPreview(this._settings, this._config)
     previewGroup.add(this._preview)
     this.page.add(previewGroup)
 
@@ -152,9 +267,10 @@ export class ButtonPage {
     const group = new Adw.PreferencesGroup({
       title: _('Elements'),
       description: _('What the button shows, in order.'),
-      header_suffix: resetButton(this._settings, ['button-elements']),
+      header_suffix: resetButton(this._config, ['button-elements']),
     })
     this.page.add(group)
+    this._elementGroup = group
     this._elementRows = new RowSet(group)
     this._connect('button-elements', () => this._syncElements())
     this._syncElements()
@@ -162,10 +278,10 @@ export class ButtonPage {
 
   _syncElements() {
     this._elementRows.clear()
-    const shown = elementOrder(this._settings.get_strv('button-elements'))
+    const shown = elementOrder(this._config.get_strv('button-elements'))
     const all = [...shown, ...ELEMENTS.filter((e) => !shown.includes(e))]
     const write = (order, visible) =>
-      this._settings.set_strv(
+      this._config.set_strv(
         'button-elements',
         order.filter((name) => visible.includes(name)),
       )
@@ -198,7 +314,7 @@ export class ButtonPage {
     const group = new Adw.PreferencesGroup({
       title: _('System indicators'),
       description: _('Shown in the button when GNOME shows them.'),
-      header_suffix: resetButton(this._settings, [
+      header_suffix: resetButton(this._config, [
         'button-indicator-order',
         'button-hidden-indicators',
       ]),
@@ -228,14 +344,14 @@ export class ButtonPage {
       return
     }
 
-    const hidden = this._settings.get_strv('button-hidden-indicators')
+    const hidden = this._config.get_strv('button-hidden-indicators')
     const ordered = orderIndicators(
       indicators,
-      this._settings.get_strv('button-indicator-order'),
+      this._config.get_strv('button-indicator-order'),
     )
     const names = ordered.map((i) => i.name)
     const writeOrder = (order) =>
-      this._settings.set_strv('button-indicator-order', order)
+      this._config.set_strv('button-indicator-order', order)
 
     ordered.forEach(({ name, icon, visible }, index) => {
       const row = new Adw.SwitchRow({
@@ -248,7 +364,7 @@ export class ButtonPage {
         const next = row.active
           ? hidden.filter((n) => n !== name)
           : [...hidden, name]
-        this._settings.set_strv('button-hidden-indicators', next)
+        this._config.set_strv('button-hidden-indicators', next)
       })
       makeReorderable(row, name, {
         first: index === 0,
@@ -264,9 +380,10 @@ export class ButtonPage {
   _buildClock() {
     const group = new Adw.PreferencesGroup({
       title: _('Clock'),
-      header_suffix: resetButton(this._settings, ['clock-format', 'clock-font']),
+      header_suffix: resetButton(this._config, ['clock-format', 'clock-font']),
     })
     this.page.add(group)
+    this._clockGroup = group
 
     const now = GLib.DateTime.new_now_local()
     const labels = CLOCK_PRESETS.map((format) =>
@@ -286,7 +403,7 @@ export class ButtonPage {
       show_apply_button: true,
     })
     this._customRow.connect('apply', () =>
-      this._settings.set_string(
+      this._config.set_string(
         'clock-format',
         unescapeFormat(this._customRow.text),
       ),
@@ -323,7 +440,7 @@ export class ButtonPage {
       if (this._syncing) return
       const index = this._formatRow.selected
       if (index < CLOCK_PRESETS.length)
-        this._settings.set_string('clock-format', CLOCK_PRESETS[index])
+        this._config.set_string('clock-format', CLOCK_PRESETS[index])
       else this._syncFormatRows(true)
     })
     this._connect('clock-format', () => this._syncFormat())
@@ -341,14 +458,14 @@ export class ButtonPage {
     fontButton.connect('notify::font-desc', () => {
       if (this._syncing) return
       const desc = fontButton.font_desc
-      this._settings.set_string('clock-font', desc ? desc.to_string() : '')
+      this._config.set_string('clock-font', desc ? desc.to_string() : '')
     })
     this._connect('clock-font', () => this._syncFont())
     this._syncFont()
   }
 
   _syncFormat() {
-    const format = this._settings.get_string('clock-format')
+    const format = this._config.get_string('clock-format')
     const preset = CLOCK_PRESETS.indexOf(format)
     this._syncing = true
     try {
@@ -366,7 +483,7 @@ export class ButtonPage {
   }
 
   _syncFont() {
-    const font = this._settings.get_string('clock-font')
+    const font = this._config.get_string('clock-font')
     this._syncing = true
     try {
       this._fontButton.font_desc = Pango.FontDescription.from_string(

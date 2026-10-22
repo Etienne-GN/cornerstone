@@ -122,6 +122,41 @@ async function checkButtonPage() {
     )
   }
   resetAll()
+
+  if (catalog.monitors.length > 1) {
+    assert(page._monitorGroup.visible, 'monitor choice shown on 2 monitors')
+    assert(!page.ownRow.visible, 'no own-settings switch for every monitor')
+    const key = catalog.monitors[1].key
+    page.monitorRow.selected = 2
+    assert(page.monitor === key, `second monitor chosen: ${page.monitor}`)
+    assert(page.ownRow.visible && !page.ownRow.active, 'own settings off')
+    assert(!page._clockGroup.sensitive, 'read-only until own settings')
+
+    page.ownRow.active = true
+    assert(page._clockGroup.sensitive, 'editable with own settings')
+    page._formatRow.selected = 1
+    const overrides = JSON.parse(settings.get_string('button-monitor-overrides'))
+    assert(
+      overrides[key]?.['clock-format'] === CLOCK_PRESETS[1],
+      `override written: ${JSON.stringify(overrides)}`,
+    )
+    assert(settings.get_string('clock-format') === '', 'global format kept')
+    assert(
+      page.monitorRow.model.get_string(2).includes('own settings'),
+      'monitor marked as having its own settings',
+    )
+
+    page.monitorRow.selected = 0
+    assert(page._formatRow.selected === 0, 'every monitor shows its own format')
+    page.monitorRow.selected = 2
+    assert(page._formatRow.selected === 1, 'the monitor shows its override')
+    page.ownRow.active = false
+    assert(
+      settings.get_string('button-monitor-overrides') === '{}',
+      'override removed',
+    )
+    resetAll()
+  }
   page.destroy()
 }
 

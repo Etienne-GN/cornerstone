@@ -42,8 +42,8 @@ tray, prefs, static-copy (clipboard-history), spike-slot. 115 unit tests.
   pointer, so the per-monitor shortcut routing is not covered there. It
   failed before the purge too.
 - `teardown` needs the AppIndicator extension, not installed here.
-- Not built yet: per-monitor override of the button's settings; a
-  dedicated "More options" row (custom clock format and codes show only
+- Per-monitor button settings were added on 2026-10-22 (see the plan).
+- Not built yet: a dedicated "More options" row (custom clock format and codes show only
   for the Custom format); a grid overflow (it is a row: panel buttons have
   no height outside a bar, which Clutter.FlowLayout collapses).
 - The overflow and tray on vertical bars were not captured; the button

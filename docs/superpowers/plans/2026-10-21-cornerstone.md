@@ -177,10 +177,20 @@ Phase 5 result: pages are built in code (`src/prefs/`), so the nested
 `prefs-ui.js` loads each one against in-memory settings seeded with the
 catalog the shell published, exercises it, then shows the window for a
 capture per page; the scenario also opens the real window through the
-Extensions app. 5.2 is partial: no per-monitor override of the button
-yet, and no separate "More options" row (the custom format field and the
+Extensions app. 5.2 is partial: no separate "More options" row (the custom format field and the
 format codes only appear for the Custom format). Fonts use GTK's font
 dialog.
+
+Follow-up (2026-10-22): per-monitor button settings. `button-monitor-overrides`
+holds, per monitor key ('main' or 'connector:...', as the tray uses), the
+monitor's own values of the five button keys. `ButtonConfig`
+(`src/button/config.js`) reads like Gio.Settings for those keys and
+resolves the override, so the button, its clock and indicators and the
+preferences preview take one in place of the settings. The Button page has
+a Monitors group (shown with two monitors or more): "Settings for" picks
+every monitor or one, and "Own settings for this monitor" copies the
+current values into an override or drops it. Covered by the `button` and
+`prefs` scenarios and `buttonOverrides` unit tests.
 
 ## Phase 6: wrap-up
 

@@ -31,13 +31,14 @@ const ELEMENTS_KEY = 'button-elements'
 export const CornerstoneButton = GObject.registerClass(
   { GTypeName: 'CornerstoneButton' },
   class CornerstoneButton extends PanelMenu.Button {
-    // `activate(button)` opens or closes the Action Center for it.
-    _init(settings, activate) {
+    // `config` is the ButtonConfig of the button's monitor, destroyed with
+    // it; `activate(button)` opens or closes the Action Center for it.
+    _init(config, activate) {
       // No menu: PanelMenu's default click handling would toggle it.
       super._init(0.5, 'Cornerstone', true)
       this.add_style_class_name('cornerstone-button')
       this._cornerstoneButton = true
-      this._settings = settings
+      this._config = config
       this._activate = activate
       this._vertical = false
 
@@ -47,22 +48,28 @@ export const CornerstoneButton = GObject.registerClass(
       })
       this.add_child(this._box)
       this._elements = {
-        indicators: new IndicatorStrip(settings),
-        clock: new ClockLabel(settings),
+        indicators: new IndicatorStrip(config),
+        clock: new ClockLabel(config),
       }
 
-      settings.connectObject(
+      config.connectObject(
         `changed::${ELEMENTS_KEY}`,
         () => this._syncElements(),
         this,
       )
       this.connect('destroy', () => {
-        settings.disconnectObject(this)
+        config.disconnectObject(this)
         // Elements left out of the box are not destroyed with it.
         for (const element of Object.values(this._elements))
           if (!element.get_parent()) element.destroy()
+        config.destroy()
       })
       this._syncElements()
+    }
+
+    // The monitor whose settings the button follows.
+    setMonitor(monitor) {
+      this._config.setMonitor(monitor)
     }
 
     setVertical(vertical) {
@@ -78,7 +85,7 @@ export const CornerstoneButton = GObject.registerClass(
     _syncElements() {
       for (const element of Object.values(this._elements))
         if (element.get_parent() === this._box) this._box.remove_child(element)
-      for (const name of elementOrder(this._settings.get_strv(ELEMENTS_KEY)))
+      for (const name of elementOrder(this._config.get_strv(ELEMENTS_KEY)))
         this._box.add_child(this._elements[name])
     }
 

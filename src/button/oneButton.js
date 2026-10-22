@@ -16,8 +16,12 @@
  * along with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
+import * as Main from 'resource:///org/gnome/shell/ui/main.js'
+
+import { monitorKey } from '../mirror/policy.js'
 import { Slots } from '../slots.js'
 import { CornerstoneButton } from './button.js'
+import { ButtonConfig } from './config.js'
 
 const ENABLED_KEY = 'one-button'
 const ACTION_CENTER_KEY = 'action-center'
@@ -87,9 +91,17 @@ export class OneButton {
     this.onActiveChanged?.(active)
   }
 
-  _verticalFor(statusArea) {
-    const panel = this._panels.dtpPanels.find((p) => p.statusArea === statusArea)
-    return panel?.checkIfVertical?.() ?? false
+  _panelFor(statusArea) {
+    return this._panels.dtpPanels.find((p) => p.statusArea === statusArea)
+  }
+
+  // The key the button's per-monitor settings use: 'main' for the top bar
+  // and dash-to-panel's primary panel, like the tray.
+  _monitorFor(statusArea) {
+    const panel = this._panelFor(statusArea)
+    if (statusArea === Main.panel.statusArea || !panel || panel.isPrimary)
+      return 'main'
+    return monitorKey(global.display, panel.monitor.index, -1)
   }
 
   _place() {
@@ -99,8 +111,9 @@ export class OneButton {
 
       let button = this._buttons.get(date)
       if (!button) {
-        button = new CornerstoneButton(this._settings, (b) =>
-          this._actionCenter.toggle(b),
+        button = new CornerstoneButton(
+          new ButtonConfig(this._settings, this._monitorFor(statusArea)),
+          (b) => this._actionCenter.toggle(b),
         )
         this._buttons.set(date, button)
         button.connectObject(
@@ -111,7 +124,9 @@ export class OneButton {
           this,
         )
       }
-      button.setVertical(this._verticalFor(statusArea))
+      button.setMonitor(this._monitorFor(statusArea))
+      const panel = this._panelFor(statusArea)
+      button.setVertical(panel?.checkIfVertical?.() ?? false)
       this._slots.swap(date, button.container)
 
       const system = statusArea.quickSettings?.container

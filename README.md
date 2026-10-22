@@ -16,7 +16,8 @@ holds only its own features: see the
 - One button: the clock and the system menu of every bar become one button
   showing the system indicators and the clock. Which indicators, their
   order, the clock format (presets or your own) and its font are yours to
-  pick, with a live preview in the preferences.
+  pick, with a live preview in the preferences. Each monitor can follow
+  the others or have its own button.
 - Action Center: quick settings across the top, notifications on the left,
   the calendar on the right, in one popup that opens on the monitor you
   clicked. Width, column sides and sections (weather, world clocks...) are

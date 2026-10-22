@@ -117,6 +117,50 @@ export async function run() {
   ])
     s.reset(key)
 
+  // Per monitor: the second bar gets its own clock and elements, the
+  // first keeps following every monitor.
+  if (DTP && MONITORS > 1) {
+    const [main, other] = buttons
+    const key = other._config.monitor
+    assert(main._config.monitor === 'main', `top bar key ${main._config.monitor}`)
+    assert(key !== 'main', `second bar key ${key}`)
+    other._config.setOverride(true)
+    other._config.set_string('clock-format', 'OWN %H')
+    other._config.set_strv('button-elements', ['clock'])
+    await sleep(200)
+    assert(other._elements.clock.text.startsWith('OWN'), 'own clock format')
+    assert(
+      !other._elements.indicators.get_parent(),
+      'own elements: indicators left out',
+    )
+    assert(!main._elements.clock.text.startsWith('OWN'), 'top bar unchanged')
+    assert(main._elements.indicators.get_parent(), 'top bar keeps indicators')
+
+    s.set_string('clock-font', 'Sans Bold 14')
+    await sleep(100)
+    assert(main._elements.clock.style.includes('700'), 'global font applied')
+    assert(!other._elements.clock.style, 'override keeps its own font')
+    s.reset('clock-font')
+    await captureStage('7-per-monitor')
+
+    // Overrides survive a rebuild: the new button reads them again.
+    dtpSettings().set_boolean('multi-monitors', false)
+    await waitFor(() => global.dashToPanel?.panels?.length === 1)
+    dtpSettings().set_boolean('multi-monitors', true)
+    await bars()
+    await sleep(300)
+    const rebuilt = assertPlaced('rebuilt with an override').at(-1)
+    assert(rebuilt._config.monitor === key, 'rebuilt button keeps its key')
+    assert(rebuilt._elements.clock.text.startsWith('OWN'), 'override after rebuild')
+
+    rebuilt._config.setOverride(false)
+    await sleep(100)
+    assert(!rebuilt._elements.clock.text.startsWith('OWN'), 'override off')
+    assert(rebuilt._elements.indicators.get_parent(), 'indicators back')
+    assert(s.get_string('button-monitor-overrides') === '{}', 'override removed')
+    buttons = assertPlaced('after per-monitor')
+  }
+
   if (DTP && VERTICAL) {
     const positions = Object.fromEntries(
       global.dashToPanel.panels.map((p) => [p.monitor.index, 'LEFT']),

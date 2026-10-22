@@ -76,12 +76,15 @@ export function gnomeClockFormat(desktop) {
 export const ButtonPreview = GObject.registerClass(
   { GTypeName: 'CornerstoneButtonPreview' },
   class ButtonPreview extends Gtk.Box {
-    _init(settings) {
+    // `config` is the ButtonConfig of the monitor shown; `settings` gives
+    // the catalog.
+    _init(settings, config) {
       super._init({
         halign: Gtk.Align.CENTER,
         css_classes: ['cornerstone-preview-bar'],
       })
       this._settings = settings
+      this._config = config
       this._desktop = new Gio.Settings({
         schema_id: 'org.gnome.desktop.interface',
       })
@@ -97,17 +100,17 @@ export const ButtonPreview = GObject.registerClass(
       })
       this.connect('realize', () => loadCss(this))
 
+      this._catalogId = settings.connect(`changed::${CATALOG_KEY}`, () =>
+        this._syncLayout(),
+      )
       this._ids = [
-        CATALOG_KEY,
         'button-elements',
         'button-indicator-order',
         'button-hidden-indicators',
-      ].map((key) =>
-        settings.connect(`changed::${key}`, () => this._syncLayout()),
-      )
+      ].map((key) => config.connect(`changed::${key}`, () => this._syncLayout()))
       this._ids.push(
-        settings.connect('changed::clock-format', () => this._syncClock()),
-        settings.connect('changed::clock-font', () => this._syncClock()),
+        config.connect('changed::clock-format', () => this._syncClock()),
+        config.connect('changed::clock-font', () => this._syncClock()),
       )
       this._desktopId = this._desktop.connect('changed', () =>
         this._syncClock(),
@@ -124,8 +127,10 @@ export const ButtonPreview = GObject.registerClass(
     destroy() {
       if (this._tick) GLib.Source.remove(this._tick)
       this._tick = 0
-      for (const id of this._ids) this._settings.disconnect(id)
+      for (const id of this._ids) this._config.disconnect(id)
       this._ids = []
+      if (this._catalogId) this._settings.disconnect(this._catalogId)
+      this._catalogId = 0
       if (this._desktopId) this._desktop.disconnect(this._desktopId)
       this._desktopId = 0
     }
@@ -143,15 +148,15 @@ export const ButtonPreview = GObject.registerClass(
         clock: this._clock,
       }
       for (const name of elementOrder(
-        this._settings.get_strv('button-elements'),
+        this._config.get_strv('button-elements'),
       ))
         this._button.append(elements[name])
 
       let child
       while ((child = this._indicators.get_first_child()))
         this._indicators.remove(child)
-      const hidden = new Set(this._settings.get_strv('button-hidden-indicators'))
-      const order = this._settings.get_strv('button-indicator-order')
+      const hidden = new Set(this._config.get_strv('button-hidden-indicators'))
+      const order = this._config.get_strv('button-indicator-order')
       const { indicators } = readCatalog(this._settings)
       for (const { name, icon, visible } of orderIndicators(indicators, order)) {
         if (hidden.has(name) || !icon || visible === false) continue
@@ -166,12 +171,12 @@ export const ButtonPreview = GObject.registerClass(
     }
 
     _syncClock() {
-      const custom = this._settings.get_string('clock-format')
+      const custom = this._config.get_string('clock-format')
       const format = custom || gnomeClockFormat(this._desktop)
       const now = GLib.DateTime.new_now_local()
       this._clock.label = now.format(format) ?? format
 
-      const font = this._settings.get_string('clock-font')
+      const font = this._config.get_string('clock-font')
       const attrs = new Pango.AttrList()
       if (font)
         attrs.insert(

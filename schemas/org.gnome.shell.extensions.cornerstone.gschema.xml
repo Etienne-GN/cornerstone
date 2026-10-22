@@ -81,5 +81,10 @@
       <summary>Clock font</summary>
       <description>A Pango font description for the clock. Empty uses the theme font.</description>
     </key>
+    <key type="s" name="button-monitor-overrides">
+      <default>'{}'</default>
+      <summary>Per-monitor button settings</summary>
+      <description>JSON object keyed by monitor ('main', 'connector:DP-1'): the button settings a monitor uses instead of the ones above (button-elements, button-indicator-order, button-hidden-indicators, clock-format, clock-font).</description>
+    </key>
   </schema>
 </schemalist>
