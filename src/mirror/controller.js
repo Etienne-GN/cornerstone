@@ -19,6 +19,7 @@
  */
 
 import GObject from 'gi://GObject'
+import St from 'gi://St'
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 
@@ -26,8 +27,11 @@ import * as Utils from '../utils.js'
 import { MirroredIndicatorButton } from './mirroredIndicatorButton.js'
 import { Slots } from '../slots.js'
 import { clearCatalog, dtpPrimaryIndex, publishCatalog } from './catalog.js'
-import { BOX_NAMES, planMirrors } from './plan.js'
+import { BOX_NAMES } from './plan.js'
 import { VISIBILITY_KEY, indicatorIsEnabled, monitorKey } from './policy.js'
+import { TRAY_KEY, planTray, readTrayLayout } from '../tray/layout.js'
+import { PrimaryTray } from '../tray/primaryTray.js'
+import { OverflowButton } from '../tray/overflow.js'
 
 const ENABLED_KEY = 'mirror-indicators'
 const QUICK_SETTINGS = 'quickSettings'
@@ -50,6 +54,9 @@ export class MirrorController {
     this._shellPanelAlive = true
     this._mainPanelGone = false
     this._slots = new Slots()
+    this._primaryTray = new PrimaryTray()
+    this._primaryBar = null
+    this._sources = new Map()
     // Set by whoever owns the system menu slot instead (the one button).
     this.skipQuickSettings = () => false
     this._signalsHandler = new Utils.GlobalSignalsHandler()
@@ -58,7 +65,11 @@ export class MirrorController {
     this._signalsHandler.add(
       [
         settings,
-        [`changed::${VISIBILITY_KEY}`, `changed::${ENABLED_KEY}`],
+        [
+          `changed::${VISIBILITY_KEY}`,
+          `changed::${ENABLED_KEY}`,
+          `changed::${TRAY_KEY}`,
+        ],
         () => this.refresh(),
       ],
       [Main.extensionManager, 'extension-state-changed', () => this.refresh()],
@@ -79,6 +90,8 @@ export class MirrorController {
       this._watch(actor)
       actor?.connectObject('destroy', () => this._onShellPanelGone(), this)
     }
+    // Icons moved out of the top bar still show and hide themselves.
+    this._watch(this._primaryTray.holder)
   }
 
   // Called whenever the PanelSource changes, with dash-to-panel's panels.
@@ -86,7 +99,34 @@ export class MirrorController {
     this.detach()
     this._panelManager = panels[0]?.panelManager ?? null
     this._panels = panels.filter((p) => p.isStandalone && !p.isPrimary)
+    this._primaryBar = this._makePrimaryBar(panels.find((p) => p.isPrimary))
     this._refreshNow()
+  }
+
+  // GNOME's top bar, alone or as dash-to-panel's primary panel, seen as a
+  // panel: its real icons are arranged by PrimaryTray, only its overflow
+  // holds mirrors.
+  _makePrimaryBar(dtpPrimary) {
+    return {
+      isPrimaryBar: true,
+      monitor: {
+        index: dtpPrimary?.monitor.index ?? Main.layoutManager.primaryIndex,
+      },
+      panel: Main.panel,
+      menuManager: Main.panel.menuManager,
+      statusArea: Main.panel.statusArea,
+      geom: dtpPrimary?.geom ?? { position: St.Side.TOP },
+      _leftBox: Main.panel._leftBox,
+      _centerBox: Main.panel._centerBox,
+      _rightBox: Main.panel._rightBox,
+      checkIfVertical: () => dtpPrimary?.checkIfVertical() ?? false,
+      _setVertical: (actor, vertical) =>
+        dtpPrimary?._setVertical(actor, vertical),
+    }
+  }
+
+  get _bars() {
+    return this._primaryBar ? [this._primaryBar, ...this._panels] : this._panels
   }
 
   // The panels may already be destroyed: mirrors in their boxes went with
@@ -94,7 +134,7 @@ export class MirrorController {
   // get their own button back.
   detach() {
     this._timeoutsHandler.removeWithLabel(REFRESH)
-    for (const panel of this._panels) {
+    for (const panel of this._bars) {
       try {
         this._clearPanel(panel)
       } catch (e) {
@@ -103,6 +143,7 @@ export class MirrorController {
     }
     this._slots.releaseAll()
     this._panels = []
+    this._primaryBar = null
     this._states.clear()
   }
 
@@ -119,6 +160,12 @@ export class MirrorController {
 
   destroy() {
     this.detach()
+    // After the mirrors, which clone the icons it holds.
+    try {
+      this._primaryTray.destroy()
+    } catch (e) {
+      console.error('[cornerstone] tray restore', e)
+    }
     this._timeoutsHandler.destroy()
     this._signalsHandler.destroy()
     clearCatalog(this._settings)
@@ -187,6 +234,27 @@ export class MirrorController {
 
     const enabled = this._settings.get_boolean(ENABLED_KEY)
 
+    try {
+      this._sources = new Map(
+        this._primaryTray.sources().map((source) => [source.role, source]),
+      )
+    } catch (e) {
+      console.error('[cornerstone] tray sources', e)
+    }
+
+    const primary = this._primaryBar
+    if (primary) {
+      try {
+        this._syncPanel(primary)
+        this._primaryTray.apply(
+          this._itemsFor(primary),
+          this._states.get(primary)?.overflow?.container ?? null,
+        )
+      } catch (e) {
+        console.error('[cornerstone] tray refresh', e)
+      }
+    }
+
     for (const panel of this._panels) {
       try {
         if (enabled) this._syncPanel(panel)
@@ -195,6 +263,25 @@ export class MirrorController {
         console.error('[cornerstone] mirror refresh', e)
       }
     }
+  }
+
+  _keyFor(panel) {
+    // Main.panel lives on dash-to-panel's primary monitor, not necessarily
+    // the system one.
+    const primaryIndex = dtpPrimaryIndex(this._panelManager)
+    return monitorKey(global.display, panel.monitor.index, primaryIndex)
+  }
+
+  // The tray layout of the panel's monitor, for the icons present now.
+  _itemsFor(panel) {
+    const key = this._keyFor(panel)
+    const sources = [...this._sources.values()].map(({ role, box }) => ({
+      role,
+      box,
+    }))
+    return planTray(sources, readTrayLayout(this._settings)[key], (role) =>
+      indicatorIsEnabled(this._settings, key, role) ? 'shown' : 'hidden',
+    )
   }
 
   _stateFor(panel) {
@@ -209,6 +296,7 @@ export class MirrorController {
         },
         mirrors: new Map(),
         quickSettings: null,
+        overflow: null,
       }
       this._states.set(panel, state)
     }
@@ -218,27 +306,32 @@ export class MirrorController {
   _syncPanel(panel) {
     const state = this._stateFor(panel)
     const statusArea = Main.panel.statusArea
-    // Main.panel lives on dash-to-panel's primary monitor, not necessarily
-    // the system one.
-    const primaryIndex = dtpPrimaryIndex(panel.panelManager)
-    const key = monitorKey(global.display, panel.monitor.index, primaryIndex)
-    const boxes = {}
-    for (const box of BOX_NAMES)
-      boxes[box] = Main.panel[BOX_ACTORS[box]]?.get_children() ?? []
-
-    const plan = planMirrors(boxes, statusArea, (role) =>
-      indicatorIsEnabled(this._settings, key, role),
+    // An icon its extension hides is not mirrored, wherever it sits.
+    const items = this._itemsFor(panel).filter(
+      (item) =>
+        item.state !== 'hidden' &&
+        statusArea[item.role] &&
+        this._sources.get(item.role)?.child.visible &&
+        (item.state === 'overflow' || !panel.isPrimaryBar),
     )
-    const wanted = new Set(plan.map((entry) => entry.role))
+    const placement = new Map(items.map((item) => [item.role, item.state]))
 
     for (const [role, entry] of [...state.mirrors])
-      if (!wanted.has(role) || entry.source !== statusArea[role])
+      if (
+        placement.get(role) !== entry.placement ||
+        entry.source !== statusArea[role]
+      )
         this._destroyMirror(state, role)
 
-    const positions = { left: 0, center: 0, right: 0 }
-    for (const { box, role } of plan) {
+    const overflowItems = items.filter((item) => item.state === 'overflow')
+    const overflow = this._syncOverflow(panel, state, overflowItems.length > 0)
+
+    const positions = { left: 0, center: 0, right: overflow ? 1 : 0 }
+    for (const { box, role } of items) {
+      if (placement.get(role) !== 'shown') continue
       const entry =
-        state.mirrors.get(role) ?? this._createMirror(panel, state, role)
+        state.mirrors.get(role) ??
+        this._createMirror(panel, state, role, true, 'shown')
       if (!entry) continue
 
       this._place(
@@ -250,7 +343,63 @@ export class MirrorController {
       )
     }
 
-    this._syncQuickSettings(panel, state)
+    let index = 0
+    for (const { role } of overflowItems) {
+      const entry =
+        state.mirrors.get(role) ??
+        this._createMirror(panel, state, role, true, 'overflow')
+      if (!entry) continue
+
+      const container = entry.mirror.container
+      if (container.get_parent() !== overflow.flow) {
+        container.get_parent()?.remove_child(container)
+        overflow.flow.insert_child_at_index(container, index)
+      } else if (overflow.flow.get_child_at_index(index) !== container) {
+        overflow.flow.set_child_at_index(container, index)
+      }
+      entry.mirror.syncOrientation(false)
+      index++
+    }
+    // The flow keeps the popup sized; drop the overflow once it is empty.
+    if (overflow && index === 0) this._destroyOverflow(panel, state)
+
+    if (!panel.isPrimaryBar) this._syncQuickSettings(panel, state)
+  }
+
+  // The panel's overflow button, at the start of its right box, while it
+  // has icons to hold.
+  _syncOverflow(panel, state, wanted) {
+    if (!wanted) {
+      this._destroyOverflow(panel, state)
+      return null
+    }
+    if (state.overflow) return state.overflow
+
+    const button = new OverflowButton(panel.geom?.position ?? St.Side.TOP)
+    state.overflow = button
+    panel._rightBox.insert_child_at_index(button.container, 0)
+    if (state.host.vertical) panel._setVertical(button.container, true)
+    state.host.menuManager?.addMenu(button.menu)
+    state.overflowHost = { ...state.host, anchor: () => button }
+    button.connectObject(
+      'destroy',
+      () => {
+        if (state.overflow === button) state.overflow = null
+      },
+      this,
+    )
+    return button
+  }
+
+  _destroyOverflow(panel, state) {
+    const button = state.overflow
+    if (!button) return
+
+    state.overflow = null
+    for (const [role, entry] of [...state.mirrors])
+      if (entry.placement === 'overflow') this._destroyMirror(state, role)
+    state.host.menuManager?.removeMenu(button.menu)
+    button.destroy()
   }
 
   _place(panel, mirror, box, position, vertical) {
@@ -267,9 +416,10 @@ export class MirrorController {
     mirror.syncOrientation(vertical)
   }
 
-  _createMirror(panel, state, role, track = true) {
+  _createMirror(panel, state, role, track = true, placement = 'shown') {
     const source = Main.panel.statusArea[role]
-    const mirror = new MirroredIndicatorButton(state.host, role)
+    const host = placement === 'overflow' ? state.overflowHost : state.host
+    const mirror = new MirroredIndicatorButton(host, role)
 
     // An empty source gets no presence watchers; the box watchers bring
     // the role back once it has content.
@@ -278,8 +428,9 @@ export class MirrorController {
       return null
     }
 
-    const entry = { mirror, source }
+    const entry = { mirror, source, placement }
     if (track) state.mirrors.set(role, entry)
+    if (placement === 'overflow') state.overflow?.adopt(mirror)
     mirror.connectObject(
       'destroy',
       () => this._onMirrorDestroyed(panel, state, role, entry),
@@ -351,6 +502,7 @@ export class MirrorController {
 
     for (const role of [...state.mirrors.keys()])
       this._destroyMirror(state, role)
-    this._destroyQuickSettings(panel, state)
+    this._destroyOverflow(panel, state)
+    if (!panel.isPrimaryBar) this._destroyQuickSettings(panel, state)
   }
 }

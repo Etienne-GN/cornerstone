@@ -144,3 +144,28 @@
 .cornerstone-button-box {
 	spacing: 8px;
 }
+
+/* The tray overflow popup. */
+/* GNOME gives every popup menu a 15em minimum width. */
+.popup-menu.cornerstone-overflow-popup {
+	min-width: 0;
+}
+
+.cornerstone-overflow-menu {
+	padding: 6px;
+}
+
+.cornerstone-overflow .system-status-icon {
+	icon-size: 16px;
+}
+
+.cornerstone-overflow {
+	spacing: 4px;
+}
+
+.cornerstone-overflow .panel-button {
+	-natural-hpadding: 8px;
+	-minimum-hpadding: 8px;
+	min-height: 32px;
+	border-radius: 9px;
+}

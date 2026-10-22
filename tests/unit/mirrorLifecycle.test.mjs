@@ -728,7 +728,21 @@ const { MirrorController } = loadGjs(controllerPath, {
   publishCatalog() {},
   dtpPrimaryIndex: () => 0,
   BOX_NAMES: ['left', 'center', 'right'],
-  planMirrors: () => [],
+  St: { Side: { TOP: 0 } },
+  TRAY_KEY: 'tray-layout',
+  planTray: () => [],
+  readTrayLayout: () => ({}),
+  PrimaryTray: class {
+    constructor() {
+      this.holder = new BoxLayout()
+    }
+    sources() {
+      return []
+    }
+    apply() {}
+    destroy() {}
+  },
+  OverflowButton: class {},
   VISIBILITY_KEY: 'mirror-visibility',
   indicatorIsEnabled: () => true,
   monitorKey: () => 'key',

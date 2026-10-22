@@ -10,9 +10,9 @@ $(if $(SCHEMA),,$(error cannot read settings-schema from metadata.json))
 $(if $(DOMAIN),,$(error cannot read gettext-domain from metadata.json))
 
 MODULES = src/*.js src/stylesheet.css metadata.json COPYING README.md
-SUBDIRS = mirror actionCenter button
+SUBDIRS = mirror actionCenter button tray
 UI_MODULES = ui/*.ui
-TOLOCALIZE = src/*.js src/mirror/*.js src/actionCenter/*.js src/button/*.js
+TOLOCALIZE = src/*.js src/mirror/*.js src/actionCenter/*.js src/button/*.js src/tray/*.js
 MSGSRC = $(wildcard po/*.po)
 
 INSTALLBASE = $(HOME)/.local/share/gnome-shell/extensions

@@ -20,6 +20,11 @@
       <summary>Mirrored indicator catalog</summary>
       <description>Indicators known to the mirror, per monitor (JSON).</description>
     </key>
+    <key type="s" name="tray-layout">
+      <default>'{}'</default>
+      <summary>Tray layout</summary>
+      <description>Per monitor, the tray icons in order with their bar box (left, center, right) and state (shown, overflow, hidden), as JSON.</description>
+    </key>
     <key type="b" name="action-center">
       <default>true</default>
       <summary>Action Center</summary>

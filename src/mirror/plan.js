@@ -34,7 +34,7 @@ function owns(child, indicator) {
   )
 }
 
-function roleForChild(child, statusArea, isEnabled) {
+export function roleForChild(child, statusArea, isEnabled = () => true) {
   for (const role in statusArea) {
     const indicator = statusArea[role]
     if (!indicator || EXCLUDED_ROLES.includes(role) || !isEnabled(role))
