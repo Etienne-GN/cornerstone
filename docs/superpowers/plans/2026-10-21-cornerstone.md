@@ -162,7 +162,7 @@ the tray layout does not list.
 ## Phase 5: preferences
 
 - [x] 5.1 Window pages: Button, Action Center, Tray, About.
-- [~] 5.2 Button page: live preview, draggable element list (indicators,
+- [x] 5.2 Button page: live preview, draggable element list (indicators,
   clock, date) with show switches and up/down buttons, clock presets,
   "More options" (custom format with cheat sheet, fonts, spacing),
   per-monitor override, reset.
@@ -177,13 +177,11 @@ Phase 5 result: pages are built in code (`src/prefs/`), so the nested
 `prefs-ui.js` loads each one against in-memory settings seeded with the
 catalog the shell published, exercises it, then shows the window for a
 capture per page; the scenario also opens the real window through the
-Extensions app. 5.2 is partial: no separate "More options" row (the custom format field and the
-format codes only appear for the Custom format). Fonts use GTK's font
-dialog.
+Extensions app. Fonts use GTK's font dialog.
 
 Follow-up (2026-10-22): per-monitor button settings. `button-monitor-overrides`
 holds, per monitor key ('main' or 'connector:...', as the tray uses), the
-monitor's own values of the five button keys. `ButtonConfig`
+monitor's own values of the button keys. `ButtonConfig`
 (`src/button/config.js`) reads like Gio.Settings for those keys and
 resolves the override, so the button, its clock and indicators and the
 preferences preview take one in place of the settings. The Button page has
@@ -191,6 +189,11 @@ a Monitors group (shown with two monitors or more): "Settings for" picks
 every monitor or one, and "Own settings for this monitor" copies the
 current values into an override or drops it. Covered by the `button` and
 `prefs` scenarios and `buttonOverrides` unit tests.
+
+Follow-up (2026-10-22): a More options group (clock format field, always
+shown and starting from the current format; format codes;
+`button-spacing`), a grid overflow (`tray-overflow-columns`), and the
+`routing` and `teardown` scenarios passing; see the ledger.
 
 ## Phase 6: wrap-up
 

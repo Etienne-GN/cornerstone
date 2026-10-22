@@ -28,18 +28,30 @@ absolute socket path. `XDG_RUNTIME_DIR` stays private.
 
 `--with-extension <uuid>` (repeatable) copies an installed extension from
 `~/.local/share/gnome-shell/extensions` (else `/usr/share/gnome-shell/
-extensions`) into the nested data dir and enables it at startup. The source
-is only read.
+extensions`, else `.nested/extensions`) into the nested data dir and
+enables it at startup. The source is only read.
+`tests/nested/fetch-extension.sh <uuid>` downloads an extension from
+extensions.gnome.org, for the GNOME Shell installed here, into
+`.nested/extensions`: test-only, never installed into the live session.
+
+The nested shell turns hot corners off: virtual pointers start at 0,0 and
+would open the overview.
 
 ## Teardown with third-party extensions
 
+    tests/nested/fetch-extension.sh appindicatorsupport@rgcjonas.gmail.com
     tests/nested/run.sh teardown --monitors 2 \
       --with-extension arcmenu@arcmenu.com \
-      --with-extension appindicatorsupport@rgcjonas.gmail.com
+      --with-extension appindicatorsupport@rgcjonas.gmail.com \
+      --shutdown-noise-from arcmenu@arcmenu.com
 
 Cycles ArcMenu and Cornerstone, then ends with both enabled so the shell's own
 shutdown runs under live mirrors. Headless runs check the whole log,
 shutdown included, and fail when the shell never reached shutdown.
+ArcMenu's dialogs throw from their own `destroy()` at shutdown, with or
+without Cornerstone; `--shutdown-noise-from <uuid>` lists such errors as
+notes when they are raised after the scenario is done and from that
+extension's own files.
 
 `static-copy --monitors 2 --with-extension clipboard-history@alexsaveau.dev`
 fails on any off-stage theme-node lookup while the clipboard indicator is

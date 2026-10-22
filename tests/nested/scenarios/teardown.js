@@ -13,9 +13,12 @@ import {
 } from '../lib.js'
 
 // Run with --monitors 2 --with-extension arcmenu@arcmenu.com
-// --with-extension appindicatorsupport@rgcjonas.gmail.com. The scenario ends
-// with everything enabled, so the shell's own shutdown (uiGroup destroyed
-// under live mirrors) is part of the checked log.
+// --with-extension appindicatorsupport@rgcjonas.gmail.com
+// --shutdown-noise-from arcmenu@arcmenu.com (AppIndicator can be fetched
+// with tests/nested/fetch-extension.sh). The scenario ends with everything
+// enabled, so the shell's own shutdown (uiGroup destroyed under live
+// mirrors) is part of the checked log. ArcMenu's dialogs throw from their
+// own destroy() at shutdown with or without Cornerstone, hence the flag.
 
 export const METRICS = {}
 

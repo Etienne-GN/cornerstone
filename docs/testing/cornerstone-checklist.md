@@ -52,7 +52,8 @@ date '+%F %T' | tee ~/cornerstone-check-start.txt
   - put an icon in the Left or Centre box;
   - set an icon to "In the overflow": a chevron appears on that monitor's
     bar; its popup holds the icon, and clicking the icon opens its menu
-    against the chevron;
+    against the chevron. With several icons there, they form a grid;
+    "Overflow columns" changes how many fit on a row;
   - set an icon to "Hidden": gone from that monitor only.
   - Reset puts that monitor back to GNOME's order.
 
@@ -62,6 +63,9 @@ date '+%F %T' | tee ~/cornerstone-check-start.txt
   elements, hide an indicator, pick each clock format, try a custom format
   with `\n`, change the font. The bars follow live; Reset brings GNOME's
   look back.
+- Button page, More options: start from a preset, edit the clock format
+  there (codes add themselves when clicked), apply: the format shows as
+  Custom. Change Spacing: the gap between indicators and clock follows.
 - Button page, two monitors: under Monitors, pick the second one and turn
   on its own settings; change its clock and elements. Only that bar
   changes, and it keeps them after unplugging and replugging the monitor

@@ -17,7 +17,8 @@ holds only its own features: see the
   showing the system indicators and the clock. Which indicators, their
   order, the clock format (presets or your own) and its font are yours to
   pick, with a live preview in the preferences. Each monitor can follow
-  the others or have its own button.
+  the others or have its own button. More options take your own clock
+  format and the spacing.
 - Action Center: quick settings across the top, notifications on the left,
   the calendar on the right, in one popup that opens on the monitor you
   clicked. Width, column sides and sections (weather, world clocks...) are
@@ -29,7 +30,7 @@ holds only its own features: see the
   their menus open there.
 - Tray organization, per monitor: order the icons, put them in the left,
   centre or right part of the bar, hide them, or tuck them in an overflow
-  behind a chevron, Windows style.
+  behind a chevron, Windows style, in a grid as wide as you like.
 - Everything can be turned off to get GNOME's own clock, menus and
   popups back.
 

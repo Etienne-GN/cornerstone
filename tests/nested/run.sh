@@ -2,12 +2,16 @@
 # Run one scenario in an isolated GNOME Shell, headless by default.
 # Usage: tests/nested/run.sh <scenario> [--monitors N] [--vertical]
 #        [--viewer] [--no-dtp] [--with-extension <uuid>]...
+#        [--shutdown-noise-from <uuid>]...
 # The installed Dash to Panel is enabled too unless --no-dtp is given.
+# --shutdown-noise-from turns JS errors that another extension raises from
+# its own code after the scenario is done (at shell shutdown) into notes.
 set -euo pipefail
 
 usage() {
   echo "usage: $0 <scenario> [--monitors N] [--vertical] [--viewer]" \
-    "[--no-dtp] [--with-extension <uuid>]..." >&2
+    "[--no-dtp] [--with-extension <uuid>]..." \
+    "[--shutdown-noise-from <uuid>]..." >&2
   exit 2
 }
 
@@ -23,6 +27,7 @@ vertical=0
 viewer=0
 dtp=1
 with_ext=()
+noise_from=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --monitors)
@@ -47,6 +52,11 @@ while [[ $# -gt 0 ]]; do
       with_ext+=("$2")
       shift 2
       ;;
+    --shutdown-noise-from)
+      [[ $# -ge 2 && "$2" =~ ^[A-Za-z0-9_][A-Za-z0-9_.@-]*$ ]] || usage
+      noise_from+=("$2")
+      shift 2
+      ;;
     *) usage ;;
   esac
 done
@@ -63,15 +73,16 @@ script="$repo/tests/nested/scenarios/$scenario.js"
 ext_srcs=()
 for u in "${with_ext[@]}"; do
   src=""
+  # .nested/extensions holds test-only copies (tests/nested/fetch-extension.sh).
   for base in "$HOME/.local/share/gnome-shell/extensions" \
-    /usr/share/gnome-shell/extensions; do
+    /usr/share/gnome-shell/extensions "$repo/.nested/extensions"; do
     [[ -f "$base/$u/metadata.json" ]] && {
       src="$base/$u"
       break
     }
   done
   [[ -n "$src" ]] || {
-    echo "extension not installed: $u" >&2
+    echo "extension not installed: $u (tests/nested/fetch-extension.sh $u)" >&2
     exit 2
   }
   ext_srcs+=("$src")
@@ -293,6 +304,26 @@ fi
 if [[ $viewer -eq 0 ]] && ! grep -q 'Shutting down GNOME Shell' "$log"; then
   echo "FAIL $scenario: shell did not reach shutdown" >&2
   fail=1
+fi
+# A JS error after the DONE sentinel whose top frame is in a listed
+# extension's own files is that extension's shutdown noise.
+if [[ ${#noise_from[@]} -gt 0 ]]; then
+  awk -v uuids="${noise_from[*]}" -v sentinel="[cornerstone-test] DONE $scenario" '
+    BEGIN { n = split(uuids, list, " ") }
+    index($0, sentinel) { done = 1 }
+    held {
+      noise = 0
+      for (i = 1; i <= n; i++)
+        if (index($0, "/extensions/" list[i] "/")) noise = 1
+      if (noise) { notes++; print "note: shutdown noise: " held > "/dev/stderr" }
+      else print held
+      held = ""
+    }
+    done && /JS ERROR/ { held = $0; next }
+    { print }
+    END { if (held) print held }
+  ' "$checked" >"$work/checked.log"
+  checked="$work/checked.log"
 fi
 if grep -n 'JS ERROR' "$checked" >&2; then
   echo "FAIL $scenario: JS ERROR in $log" >&2

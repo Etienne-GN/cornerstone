@@ -36,16 +36,30 @@ PASS: smoke (with and without Dash to Panel), mirrors (also vertical),
 actionCenter, disable-fault, button (with, without, vertical), acLayout,
 tray, prefs, static-copy (clipboard-history), spike-slot. 115 unit tests.
 
+## Follow-ups (2026-10-22)
+
+- Per-monitor button settings (`button-monitor-overrides`, `ButtonConfig`,
+  Monitors group on the Button page).
+- Tray overflow as a grid of square cells; `tray-overflow-columns`
+  (1–8, default 4) on the Tray page.
+- More options group on the Button page: clock format field (always
+  shown, starting from the current format), format codes, and
+  `button-spacing`, overridable per monitor.
+- `routing` passes on headless 51: a new virtual device drops its first
+  events (motion is resent until the pointer arrives), and the pointer
+  started in the hot corner, which opened the overview (hot corners are
+  off in the nested shell now).
+- `teardown` passes with AppIndicator fetched into `.nested/extensions`
+  (`tests/nested/fetch-extension.sh`) and
+  `--shutdown-noise-from arcmenu@arcmenu.com`: ArcMenu's dialogs throw
+  from their own destroy() at shutdown, also without Cornerstone, and
+  Cornerstone creates none of them.
+
+Sweep after these: every scenario passes, `routing` and `teardown`
+included. 120 unit tests.
+
 ## Known gaps
 
-- `routing` fails on headless 51: virtual pointer motion does not move the
-  pointer, so the per-monitor shortcut routing is not covered there. It
-  failed before the purge too.
-- `teardown` needs the AppIndicator extension, not installed here.
-- Per-monitor button settings were added on 2026-10-22 (see the plan).
-- Not built yet: a dedicated "More options" row (custom clock format and codes show only
-  for the Custom format); a grid overflow (it is a row: panel buttons have
-  no height outside a bar, which Clutter.FlowLayout collapses).
 - The overflow and tray on vertical bars were not captured; the button
   on a vertical bar was.
 - The one button's clock on a side bar splits words and hours/minutes
