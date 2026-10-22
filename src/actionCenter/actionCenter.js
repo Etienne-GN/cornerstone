@@ -36,6 +36,28 @@ import { WidgetMover } from './widgetMover.js'
 const DIM_BRIGHTNESS = -0.4
 const DIM_PROPERTY = '@effects.dim.brightness'
 const ENABLED_KEY = 'action-center'
+const WIDTH_KEY = 'action-center-width'
+const SWAP_KEY = 'action-center-swap'
+const HIDDEN_KEY = 'action-center-hidden-sections'
+
+// Sections that can be hidden, and the GNOME widgets each one hides. The
+// quick settings and notifications are whole hosts of the popup.
+export const SECTIONS = [
+  'quick-settings',
+  'notifications',
+  'today',
+  'calendar',
+  'events',
+  'world-clocks',
+  'weather',
+]
+const SECTION_WIDGETS = {
+  today: '_date',
+  calendar: '_calendar',
+  events: '_eventsItem',
+  'world-clocks': '_clocksItem',
+  weather: '_weatherItem',
+}
 
 class ActionCenterMenu extends PopupMenu.PopupMenu {
   constructor(qsMenu) {
@@ -67,20 +89,55 @@ class ActionCenterMenu extends PopupMenu.PopupMenu {
     })
     this.box.add_child(this.content)
 
-    this.qsHost = this._addHost('cornerstone-action-center-quick-settings', false)
-    this.messagesHost = this._addHost('cornerstone-action-center-messages', true)
-    this.calendarHost = this._addHost('cornerstone-action-center-calendar', false)
+    // Quick settings across the top; notifications and the calendar side
+    // by side below.
+    this.qsHost = this._addHost(
+      this.content,
+      'cornerstone-action-center-quick-settings',
+      false,
+    )
+    this.columns = new St.BoxLayout({
+      style_class: 'cornerstone-action-center-columns',
+      x_expand: true,
+      y_expand: true,
+    })
+    this.content.add_child(this.columns)
+    this.messagesHost = this._addHost(
+      this.columns,
+      'cornerstone-action-center-messages',
+      true,
+    )
+    this.calendarHost = this._addHost(
+      this.columns,
+      'cornerstone-action-center-calendar',
+      false,
+    )
+    this.calendarHost.x_expand = false
   }
 
-  _addHost(styleClass, yExpand) {
+  _addHost(parent, styleClass, yExpand) {
     const host = new St.BoxLayout({
       style_class: styleClass,
       x_expand: true,
       y_expand: yExpand,
       ...verticalBoxProps(),
     })
-    this.content.add_child(host)
+    parent.add_child(host)
     return host
+  }
+
+  // Notifications on the left by default, the calendar on the right.
+  setSwapped(swapped) {
+    const [first, second] = swapped
+      ? [this.calendarHost, this.messagesHost]
+      : [this.messagesHost, this.calendarHost]
+    this.columns.set_child_at_index(first, 0)
+    this.columns.set_child_at_index(second, 1)
+  }
+
+  // 0 lets the popup take its natural width.
+  setWidth(width) {
+    this.content.style = width > 0 ? `width: ${width}px;` : ''
   }
 
   // `arg` is a PopupAnimation up to 50 and a params object from 51; the
@@ -216,6 +273,19 @@ export class ActionCenter {
 
     this._bindOverlay()
 
+    // Hidden sections wait here, off stage, until shown or restored.
+    this._holder = new St.Widget({ visible: false })
+    this._settings.connectObject(
+      `changed::${WIDTH_KEY}`,
+      () => this._syncLayout(),
+      `changed::${SWAP_KEY}`,
+      () => this._syncLayout(),
+      `changed::${HIDDEN_KEY}`,
+      () => this._syncLayout(),
+      this,
+    )
+    this._syncLayout()
+
     this._injections.override(
       qsMenu,
       '_setDimmed',
@@ -245,7 +315,10 @@ export class ActionCenter {
     this._step('message list capture', () => this._releaseMessageList())
     this._step('overlay constraints', () => this._unbindOverlay())
     this._step('dim override', () => this._injections.clear())
+    this._settings.disconnectObject(this)
     this._step('widgets', () => this._mover.restoreAll())
+    this._step('section holder', () => this._holder?.destroy())
+    this._holder = null
 
     // Never let menu.destroy() take a GNOME widget with it.
     this._step('safety pass', () => {
@@ -281,6 +354,25 @@ export class ActionCenter {
     this._qsMenu = null
     this._dateMenu = null
     this._calendarColumn = null
+  }
+
+  _syncLayout() {
+    const menu = this._menu
+    menu.setWidth(this._settings.get_int(WIDTH_KEY))
+    menu.setSwapped(this._settings.get_boolean(SWAP_KEY))
+
+    const hidden = new Set(this._settings.get_strv(HIDDEN_KEY))
+    menu.qsHost.visible = !hidden.has('quick-settings')
+    menu.messagesHost.visible = !hidden.has('notifications')
+    for (const [section, field] of Object.entries(SECTION_WIDGETS)) {
+      const widget = this._dateMenu[field]
+      if (!widget) continue
+      if (hidden.has(section)) this._mover.move(widget, this._holder)
+      else if (this._mover.isMoved(widget)) this._mover.restore(widget)
+    }
+    menu.calendarHost.visible = Object.keys(SECTION_WIDGETS).some(
+      (section) => !hidden.has(section),
+    )
   }
 
   open(sourceActor, { animate = true } = {}) {

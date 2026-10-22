@@ -30,6 +30,22 @@
       <summary>Notification banner click</summary>
       <description>What clicking a notification banner does while the Action Center is on: open the Action Center, or activate the notification as GNOME does.</description>
     </key>
+    <key type="i" name="action-center-width">
+      <range min="0" max="2000"/>
+      <default>0</default>
+      <summary>Action Center width</summary>
+      <description>Width of the Action Center in pixels; 0 fits its content.</description>
+    </key>
+    <key type="b" name="action-center-swap">
+      <default>false</default>
+      <summary>Swap the Action Center columns</summary>
+      <description>Put the calendar on the left and the notifications on the right.</description>
+    </key>
+    <key type="as" name="action-center-hidden-sections">
+      <default>[]</default>
+      <summary>Hidden Action Center sections</summary>
+      <description>Sections not shown: quick-settings, notifications, today, calendar, events, world-clocks, weather.</description>
+    </key>
     <key type="b" name="one-button">
       <default>true</default>
       <summary>One button</summary>

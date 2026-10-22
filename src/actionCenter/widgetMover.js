@@ -25,6 +25,19 @@ export class WidgetMover {
     else newParent.insert_child_at_index(actor, index)
   }
 
+  // Puts one moved actor back; it is no longer tracked.
+  restore(actor) {
+    const index = this._records.findIndex((r) => r.actor === actor)
+    if (index < 0) return
+
+    const [record] = this._records.splice(index, 1)
+    this._restore(record)
+  }
+
+  isMoved(actor) {
+    return this._records.some((r) => r.actor === actor)
+  }
+
   restoreAll() {
     const records = this._records.reverse()
     this._records = []

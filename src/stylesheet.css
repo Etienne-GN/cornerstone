@@ -135,6 +135,11 @@
 	margin: 0;
 }
 
+/* Two columns under the quick settings. */
+.cornerstone-action-center-columns {
+	spacing: 18px;
+}
+
 /* The one button. */
 .cornerstone-button-box {
 	spacing: 8px;
